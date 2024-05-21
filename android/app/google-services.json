@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "573150666152",
+    "project_id": "camwonders",
+    "storage_bucket": "camwonders.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:573150666152:android:38099d05e96f3f394a119d",
+        "android_client_info": {
+          "package_name": "com.example.camwonders"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "573150666152-hotru9egif0el5dgbueam9q6p16pig17.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSwQLDNJaotIxiZWaMpaw5ai60gnS6lus"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "573150666152-hotru9egif0el5dgbueam9q6p16pig17.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
