@@ -40,7 +40,7 @@ class _wonder_pageState extends State<wonder_page> {
   @override
   void initState() {
     super.initState();
-    favorisBox = Hive.box<Wonder>('favoris_wonders');
+    favorisBox = Hive.box<Wonder>('favoris_wonder');
     bool estPresent = favorisBox.values.any((wonder_de_la_box) => wonder_de_la_box.idWonder == wond.idWonder);
     if(estPresent){
       is_like = true;
@@ -60,7 +60,7 @@ class _wonder_pageState extends State<wonder_page> {
   }
 
   void SetFavorisWonder(Wonder wonder){
-    favorisBox = Hive.box<Wonder>('favoris_wonders');
+    favorisBox = Hive.box<Wonder>('favoris_wonder');
     favorisBox.add(wonder);
   }
 
@@ -131,8 +131,8 @@ class _wonder_pageState extends State<wonder_page> {
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     final List<Img> listeimages = images.where((img) => img.wonder == widget.wond).toList();
-    final List<AvantagesInconvenient> avantages = avIncs.where((aov) => aov.avantage == true && aov.wonder == wond).toList();
-    final List<AvantagesInconvenient> inconvenients = avIncs.where((aov) => aov.avantage == false && aov.wonder == wond).toList();
+    final List<AvantagesInconvenient_wonder> avantages = avInc_wonder.where((aov) => aov.get_if_is_avantages_or_inconvenient() && aov.wonder == wond).toList();
+    final List<AvantagesInconvenient_wonder> inconvenients = avInc_wonder.where((aov) => !aov.get_if_is_avantages_or_inconvenient() && aov.wonder == wond).toList();
     return Scaffold(
       appBar: AppBar(
         primary: true,
@@ -157,10 +157,11 @@ class _wonder_pageState extends State<wonder_page> {
                             content: Container(
                               height: 50,
                             decoration: BoxDecoration(
-                              color: Color(0xff226900),borderRadius: BorderRadius.circular(10)
+                              color: Colors.green,borderRadius: BorderRadius.circular(10)
                             ),
                             child: const Center(child: Text("Element Ajouté aux Favoris !")),
                           ),
+                          duration: Duration(milliseconds: 900),
                           behavior: SnackBarBehavior.floating,
                           backgroundColor: Colors.transparent,
                           elevation: 0,
@@ -243,7 +244,7 @@ class _wonder_pageState extends State<wonder_page> {
                             padding: const EdgeInsets.only(right: 10),
                             child: Icon(LucideIcons.checkCircle, color: verte, size: 17,)
                             ),
-                            Text(avantages[index].content, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            Text(avantages[index].ai.content, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             )
                         ],
                       ),
@@ -271,7 +272,7 @@ class _wonder_pageState extends State<wonder_page> {
                             padding: const EdgeInsets.only(right: 10),
                             child: Icon(LucideIcons.ban, color: verte, size: 17,)
                             ),
-                            Text(inconvenients[index].content, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            Text(inconvenients[index].ai.content, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             )
                         ],
                       ),

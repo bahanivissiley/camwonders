@@ -171,13 +171,14 @@ class _InscriptionState extends State<Inscription> {
                   padding: MaterialStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(0, 15, 0, 15)),
                 ),
                 onPressed: (){
-                  Navigator.push(context, PageRouteBuilder(
+                  Navigator.pushAndRemoveUntil(context, PageRouteBuilder(
                     pageBuilder: (context, animation, secondaryAnimation) => const MainApp(),
                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                       animation = CurvedAnimation(parent: animation, curve: Curves.easeIn);
                       return FadeTransition(opacity: animation, child: child,);
                     }
-                    )
+                    ),
+                    (Route<dynamic> route) => false
                   );
                 },
                 child: const Text("Commencer sans m'inscrire",),

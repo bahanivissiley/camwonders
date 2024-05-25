@@ -9,7 +9,7 @@ class Logique {
   }
 
   void supprimerFavorisWonder(int index) {
-    favorisBox = Hive.box<Wonder>('favoris_wonders');
+    favorisBox = Hive.box<Wonder>('favoris_wonder');
     favorisBox.deleteAt(index);
   }
 }

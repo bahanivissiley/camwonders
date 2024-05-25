@@ -1,3 +1,4 @@
+import 'package:camwonders/donneesexemples.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -37,27 +38,21 @@ class Categorie {
 
   // Méthode pour obtenir l'icône
   Icon get iconcat => Icon(getIconData(iconName), size: 50, color: Color(0xff226900));
-}
 
-// Adaptateur pour la classe Categorie
-class CategorieAdapter extends TypeAdapter<Categorie> {
-  @override
-  final int typeId = 0;
-
-  @override
-  Categorie read(BinaryReader reader) {
-    return Categorie(
-      reader.readInt(),
-      reader.readString(),
-      reader.readString(),
-    );
+  List<Wonder> getWonders(){
+    return wonders.where((wonder) => wonder.categorie == this).toList();
   }
 
-  @override
-  void write(BinaryWriter writer, Categorie obj) {
-    writer.writeInt(obj.idCategory);
-    writer.writeString(obj.categoryName);
-    writer.writeString(obj.iconName);
+  List<Wonder> getWondersByFilters(bool gratuit, String region){
+    if(gratuit &&region == ""){
+      return wonders.where((wonder) => wonder.free == true).toList();
+    }else if(region != "" && gratuit==false){
+      return wonders.where((wonder) => wonder.region == region).toList();
+    }else if(region != "" && gratuit){
+      return wonders.where((wonder) => wonder.free == true).toList() + wonders.where((wonder) => wonder.region == region).toList();
+    }else{
+      return wonders.where((wonder) => wonder.categorie == this).toList();
+    }
   }
 }
 
@@ -80,24 +75,27 @@ class Wonder {
   final String city;
 
   @HiveField(5)
-  final bool free;
+  final String region;
 
   @HiveField(6)
-  final int price;
+  final bool free;
 
   @HiveField(7)
-  final String horaire;
+  final int price;
 
   @HiveField(8)
-  final double altitude;
+  final String horaire;
 
   @HiveField(9)
-  final double latitude;
+  final double altitude;
 
   @HiveField(10)
-  int note;
+  final double latitude;
 
   @HiveField(11)
+  int note;
+
+  @HiveField(12)
   final Categorie categorie;
 
   Wonder(
@@ -106,6 +104,7 @@ class Wonder {
       this.description,
       this.imagePath,
       this.city,
+      this.region,
       this.free,
       this.price,
       this.horaire,
@@ -117,11 +116,20 @@ class Wonder {
   void setNote(int note) {
     this.note = note;
   }
-}
 
-void registerHiveAdapters() {
-  // Enregistrement de l'adaptateur pour la classe Categorie
-  Hive.registerAdapter(CategorieAdapter());
+  //getAvis()
+
+  //getPosition()
+
+  //getImages()
+
+  //getSimilary()
+
+  //Reserver()
+
+  //setMeteoTime()
+
+  //List<AvantagesInconvenient> getAvantages()
 }
 
 
@@ -129,9 +137,27 @@ class AvantagesInconvenient{
   final int id;
   final bool avantage;
   final String content;
+
+  AvantagesInconvenient(this.id, this.avantage, this.content);
+}
+
+class AvantagesInconvenient_wonder{
+  final AvantagesInconvenient ai;
   final Wonder wonder;
 
-  AvantagesInconvenient(this.id, this.avantage, this.content, this.wonder);
+  AvantagesInconvenient_wonder({required this.ai, required this.wonder});
+
+  String getAvantagesInconvenientContent(){
+    return ai.content;
+  }
+
+  bool get_if_is_avantages_or_inconvenient(){
+    if(ai.avantage){
+      return true;
+    }else{
+      return false;
+    }
+  }
 }
 
 class Img{
@@ -152,6 +178,22 @@ class WonderShort{
   final Wonder wond;
 
   WonderShort(this.idWonderShort, this.like, this.desc,  this.videoPath, this.dateUpload, this.vues, this.wond);
+
+  String getTitle(){
+    return this.wond.wonderName;
+  }
+
+  String getDescription(){
+    return this.desc;
+  }
+
+  int getLikes(){
+    return like;
+  }
+
+  //List<Comment> getCommenttaires(){
+    //return;
+  //}
 }
 
 class User{
@@ -163,6 +205,21 @@ class User{
   Box<Wonder> favorisBox;
 
   User(this.IdUser, this.identifiant, this.password, this.premium, this.favorisBox);
+
+  //getWonderFavoris()
+
+  //getNotifications()
+
+  //UpdateProfilPicture()
+
+  //changePassword()
+
+  //changeUsername()
+
+  //setSignalErreur()
+
+  //setRappelVisite()
+
 }
 
 class Avis{

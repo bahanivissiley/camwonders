@@ -152,7 +152,7 @@ class _StoriesListState extends State<StoriesList> {
 
   Future loadData() async{
     setState(() {isLoading = true;});
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
 
     if(mounted){
       setState(() {isLoading = false;});

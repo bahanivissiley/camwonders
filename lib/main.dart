@@ -13,7 +13,7 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(WonderAdapter());
   Hive.registerAdapter(CategorieAdapter());
-  await Hive.openBox<Wonder>('favoris_wonders');
+  await Hive.openBox<Wonder>('favoris_wonder');
   await Firebase.initializeApp();
   runApp(const MyApp());
 }

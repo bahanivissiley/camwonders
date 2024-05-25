@@ -1,12 +1,10 @@
 import 'package:camwonders/class/classes.dart';
-import 'package:camwonders/donneesexemples.dart';
 import 'package:camwonders/firebase_logique.dart';
 import 'package:camwonders/inscription.dart';
 import 'package:camwonders/logique.dart';
 import 'package:camwonders/pages/menu.dart';
 import 'package:camwonders/pages/profil.dart';
 import 'package:camwonders/pages/wonder_page.dart';
-import 'package:camwonders/pages/page_favoris.dart';
 import 'package:camwonders/pages/wondershort.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +45,7 @@ class _page_categorieState extends State<page_categorie> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
-    final List<Wonder> listewonderscat = wonders.where((catt) => catt.categorie == widget.cat).toList();
+    final List<Wonder> listewonderscat = widget.cat.getWonders();
     final List<Widget> pages = [const Menu(), const Wondershort(), const Profil(), wondersBody(size: size, listewonderscat: listewonderscat),];
     return Scaffold(
       body: pages[_selectedItem],
@@ -138,7 +136,7 @@ class _wondersBodyState extends State<wondersBody> {
 
   Future loadData() async{
     setState(() {isLoading = true;});
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
 
     if(mounted){
       setState(() {isLoading = false;});
@@ -236,6 +234,18 @@ class _wondersBodyState extends State<wondersBody> {
           ),
         ],
       ),
+
+
+
+
+
+
+
+
+
+
+
+
       body: Column(
         children: [
           Container(
@@ -372,7 +382,7 @@ class _wonderWidgetState extends State<wonderWidget> {
   @override
   void initState() {
     super.initState();
-    favorisBox = Hive.box<Wonder>('favoris_wonders');
+    favorisBox = Hive.box<Wonder>('favoris_wonder');
     bool estPresent = favorisBox.values.any((wonder_de_la_box) => wonder_de_la_box.idWonder == widget.wonderscat.idWonder);
     if(estPresent){
       is_like = true;
@@ -381,7 +391,7 @@ class _wonderWidgetState extends State<wonderWidget> {
 
   // ignore: non_constant_identifier_names
   void SetFavorisWonder(Wonder wonder){
-    favorisBox = Hive.box<Wonder>('favoris_wonders');
+    favorisBox = Hive.box<Wonder>('favoris_wonder');
     favorisBox.add(wonder);
   }
 
@@ -442,10 +452,11 @@ class _wonderWidgetState extends State<wonderWidget> {
                                   content: Container(
                                     height: 50,
                                   decoration: BoxDecoration(
-                                    color: Color(0xff226900),borderRadius: BorderRadius.circular(10)
+                                    color: Colors.green,borderRadius: BorderRadius.circular(10)
                                   ),
                                   child: const Center(child: Text("Element Ajouté aux Favoris !")),
                                 ),
+                                duration: Duration(milliseconds: 900),
                                 behavior: SnackBarBehavior.floating,
                                 backgroundColor: Colors.transparent,
                                 elevation: 0,

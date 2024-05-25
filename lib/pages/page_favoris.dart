@@ -23,7 +23,7 @@ class _page_favorisState extends State<page_favoris> {
   @override
   void initState() {
     super.initState();
-    favorisBox = Hive.box<Wonder>('favoris_wonders');
+    favorisBox = Hive.box<Wonder>('favoris_wonder');
   }
 
   void supprimerFavorisWonder(int index) {
@@ -110,6 +110,7 @@ class _page_favorisState extends State<page_favoris> {
                                           ),
                                           child: const Center(child: Text("Element suprimé des Favoris !")),
                                         ),
+                                        duration: Duration(seconds: 1),
                                         behavior: SnackBarBehavior.floating,
                                         backgroundColor: Colors.transparent,
                                         elevation: 0,
