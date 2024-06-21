@@ -55,10 +55,27 @@ dependencies:
   flutter_map: ^6.1.0
   latlong2: ^0.9.1
   image_picker: ^1.1.1
-  firebase_core: ^2.31.0
-  firebase_auth: ^4.19.5
+  firebase_core: ^3.1.0
+  firebase_auth: ^5.1.0
+  cloud_firestore: ^5.0.1
+  firebase_storage: ^12.0.1
   google_sign_in: ^6.2.1
   flutter_facebook_auth: ^7.0.0
+  internet_connection_checker: ^1.0.0+1
+  http: ^1.2.1
+  pinput: ^4.0.0
+  shared_preferences: ^2.2.3
+  sms_autofill: ^2.3.1
+  sign_in_with_apple: ^6.1.0
+  crypto: ^3.0.3
+  flutter_rating_bar: ^4.0.1
+  cached_network_image: ^3.3.1
+  flutter_cache_manager: ^3.3.2
+  intl: ^0.19.0
+  #algolia: ^1.1.2
+  flutter_share: ^2.0.0
+  share_plus: ^9.0.0
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -125,15 +142,20 @@ flutter:
     - assets/google.png
     - assets/logo-apple-dark.png
     - assets/logo-apple-white.png
-    - assets/videos/1.mp4
-    - assets/videos/2.mp4
-    - assets/videos/3.mp4
-    - assets/videos/4.mp4
     - assets/load1.gif
     - assets/loadmap.gif
     - assets/succes1.gif
     - assets/vide_dark.png
     - assets/vide_light.png
+    - assets/connected.png
+    - assets/warning.png
+    - assets/logo.png
+    - assets/locategirl.png
+    - assets/otp.png
+    - assets/profil.png
+    - assets/etiquette.png
+    - assets/vide_street.png
+    - assets/locationgirl.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

@@ -4,6 +4,7 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
+
     <application
         android:label="camwonders"
         android:name="${applicationName}"
@@ -36,7 +37,7 @@
             android:value="2" />
         <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="921031cd80e3c556ad5ea2a3ece10d396d008147" />
+        android:value="AIzaSyA1FAnkLlP9RvD4mFHqlEON-OS94ASzmHE" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility?hl=en and
@@ -47,6 +48,14 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tel" />
+        </intent>
+        <!-- If your application checks for inAppBrowserView launch mode support -->
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
         </intent>
     </queries>
 

@@ -246,3 +246,22 @@ class shimmerWonder extends StatelessWidget {
       );
   }
 }
+
+class shimmerOffre extends StatelessWidget {
+  const shimmerOffre({super.key, required this.width, required this.height});
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+          baseColor: Theme.of(context).brightness == Brightness.light ? const Color.fromARGB(255, 215, 215, 215) : const Color.fromARGB(255, 63, 63, 63),
+          highlightColor: Theme.of(context).brightness == Brightness.light ? const Color.fromARGB(255, 240, 240, 240) : const Color.fromARGB(255, 95, 95, 95),
+          child: Container(
+            height: height,
+            width: width,
+            color: Colors.grey,
+          )
+    );
+  }
+}

@@ -1,13 +1,15 @@
 //import 'dart:async';
+import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/pages/wonder_page.dart';
+import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:camwonders/class/classes.dart';
-import 'package:camwonders/donneesexemples.dart';
 //import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-class Sttories extends StatefulWidget{
+class Sttories extends StatefulWidget {
   static const verte = Color(0xff226900);
   final Wonder wond;
   const Sttories({super.key, required this.wond});
@@ -17,17 +19,21 @@ class Sttories extends StatefulWidget{
 }
 
 class _StoriesState extends State<Sttories> {
-
   _StoriesState({required this.wond});
   final Wonder wond;
   int _currentPageIndex = 0;
   final PageController _pageStorieController = PageController();
 
-
-
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    if (mounted) {
+      super.setState(fn);
+    }
   }
 
   @override
@@ -36,58 +42,85 @@ class _StoriesState extends State<Sttories> {
     super.dispose();
   }
 
-  String truncate(String text){
-    if(text.length > 35){
+  String truncate(String text) {
+    if (text.length > 35) {
       return "${text.substring(0, 35)}...";
     }
     return text;
   }
 
+  Future<QuerySnapshot> _fetchImages() async {
+    return FirebaseFirestore.instance
+        .collection('images_wonder')
+        .where('wonder_id', isEqualTo: wond.idWonder)
+        .get();
+  }
 
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     double height = size.height;
     double width = size.width;
-    final List<Img> listeimages = images.where((img) => img.wonder == wond).toList();
+    int tailledocuments = 0;
+    //final List<Img> listeimages = images.where((img) => img.wonder == wond).toList();
     const verte = Color(0xff226900);
     return Scaffold(
       body: Stack(
         children: [
           GestureDetector(
-
             onTapDown: (details) {
-            final screenWidth = MediaQuery.of(context).size.width;
-            final tapPosition = details.globalPosition.dx;
-            if (tapPosition < screenWidth / 2) {
-              // Balayage vers la gauche
-              _pageStorieController.previousPage(
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.ease,
-              );
-            } else {
-              // Balayage vers la droite
-              _pageStorieController.nextPage(
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.ease,
-              );
-            }
-          },
-            child: PageView.builder(
-              controller: _pageStorieController,
-              itemCount: listeimages.length,
-                onPageChanged: (int page) {
-                  setState(() {
-                    _currentPageIndex = page;
-                  });
-                },
-              itemBuilder: (context, index){
-                return Sttorie(path: listeimages[index].path, wonderName: wond.wonderName,);
+              final screenWidth = MediaQuery.of(context).size.width;
+              final tapPosition = details.globalPosition.dx;
+              if (_pageStorieController.positions.isNotEmpty) {
+                // Vérifier si le PageView est construit
+                if (tapPosition < screenWidth / 2) {
+                  // Balayage vers la gauche
+                  _pageStorieController.previousPage(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.ease,
+                  );
+                } else {
+                  // Balayage vers la droite
+                  _pageStorieController.nextPage(
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.ease,
+                  );
+                }
               }
+            },
+            child: FutureBuilder<QuerySnapshot>(
+              future: _fetchImages(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Something went wrong'));
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                      child:
+                          shimmerOffre(width: size.width, height: size.height));
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('No images found.'));
+                }
+
+                final documents = snapshot.data!.docs;
+
+                return PageView.builder(
+                    controller: _pageStorieController,
+                    itemCount: documents.length,
+                    itemBuilder: (context, index) {
+                      final document = documents[index];
+                      final data = document.data() as Map<String, dynamic>;
+                      return Sttorie(
+                        path: data['image_url'],
+                        wonderName: wond.wonderName,
+                      );
+                    });
+              },
             ),
           ),
-
-
           SizedBox(
             height: height,
             width: width,
@@ -103,78 +136,109 @@ class _StoriesState extends State<Sttories> {
                         //mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           SizedBox(
-                            width: width/10,
-                            child: IconButton(onPressed: (){
-                              Navigator.pop(context);
-                            }, icon: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 25,)),
+                            width: width / 10,
+                            child: IconButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                icon: const Icon(
+                                  LucideIcons.arrowLeft,
+                                  color: Colors.white,
+                                  size: 25,
+                                )),
                           ),
-      
                           SizedBox(
                             height: height / 45,
-                            width: width/10*8,
+                            width: width / 10 * 8,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: List.generate(listeimages.length, (index) {
+                              children: List.generate(tailledocuments, (index) {
                                 return AnimatedContainer(
                                   duration: const Duration(milliseconds: 500),
-                                  width: size.width / (listeimages.length * 4/3), // Ajustement en fonction du nombre total d'éléments
+                                  width: size.width /
+                                      (tailledocuments *
+                                          4 /
+                                          3), // Ajustement en fonction du nombre total d'éléments
                                   height: height / 300,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(10),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2)
-                                      )
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2))
                                     ],
-                                    color: _currentPageIndex == index ? Colors.white : const Color.fromARGB(255, 231, 231, 231).withOpacity(0.4),
+                                    color: _currentPageIndex == index
+                                        ? Colors.white
+                                        : const Color.fromARGB(
+                                                255, 231, 231, 231)
+                                            .withOpacity(0.4),
                                   ),
                                 );
                               }),
                             ),
                           ),
-
                         ],
                       ),
-
-
-                      Text(truncate(wond.wonderName), style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 20, color: Colors.white)),)
+                      Text(
+                        truncate(wond.wonderName),
+                        style: GoogleFonts.lalezar(
+                            textStyle: const TextStyle(
+                                fontSize: 20, color: Colors.white)),
+                      )
                     ],
                   ),
                 ),
-
-
                 Container(
-                  height: height/12,
-                  width: width,
-                  color: verte.withOpacity(0.7),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TextButton(
-                        onPressed: (){
-                          Navigator.push(context, PageRouteBuilder(
-                            pageBuilder: (context, animation, secondaryAnimation) => wonder_page(wond: wond,),
-                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                              animation = CurvedAnimation(parent: animation, curve: Curves.easeIn);
-                              return FadeTransition(opacity: animation, child: child,);
+                    height: height / 12,
+                    width: width,
+                    color: verte.withOpacity(0.7),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                  context,
+                                  PageRouteBuilder(
+                                    pageBuilder: (context, animation,
+                                            secondaryAnimation) =>
+                                        wonder_page(
+                                      wond: wond,
+                                    ),
+                                    transitionsBuilder: (context, animation,
+                                        secondaryAnimation, child) {
+                                      animation = CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeIn);
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      );
+                                    },
+                                  ));
                             },
-
-                            )
-                          );
-                        },
-                        style: ButtonStyle(
-                          backgroundColor: MaterialStateProperty.all<Color>(Colors.transparent),
-                          foregroundColor: MaterialStateProperty.all(Colors.white),
-                          shape: MaterialStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-                          side: MaterialStateProperty.all<BorderSide>(const BorderSide(color: Colors.white, width: 2.0)),
-                          padding: MaterialStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(60, 10, 60, 10)),
-                        ),
-                        child: const Text("Visiter", style: TextStyle(fontSize: 17),)),
-                    ],
-                  )
-                )
+                            style: ButtonStyle(
+                              backgroundColor: MaterialStateProperty.all<Color>(
+                                  Colors.transparent),
+                              foregroundColor:
+                                  MaterialStateProperty.all(Colors.white),
+                              shape: MaterialStateProperty.all<OutlinedBorder>(
+                                  RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30))),
+                              side: MaterialStateProperty.all<BorderSide>(
+                                  const BorderSide(
+                                      color: Colors.white, width: 2.0)),
+                              padding: MaterialStateProperty.all<
+                                      EdgeInsetsGeometry>(
+                                  const EdgeInsets.fromLTRB(60, 10, 60, 10)),
+                            ),
+                            child: const Text(
+                              "Visiter",
+                              style: TextStyle(fontSize: 17),
+                            )),
+                      ],
+                    ))
               ],
             ),
           )
@@ -184,10 +248,7 @@ class _StoriesState extends State<Sttories> {
   }
 }
 
-
-
-
-class Sttorie extends StatelessWidget{
+class Sttorie extends StatelessWidget {
   final String path;
   final String wonderName;
 
@@ -203,10 +264,7 @@ class Sttorie extends StatelessWidget{
         height: height,
         width: width,
         decoration: BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(path),
-            fit: BoxFit.cover
-            ),
+          image: DecorationImage(image: NetworkImage(path), fit: BoxFit.cover),
         ),
       ),
     );
