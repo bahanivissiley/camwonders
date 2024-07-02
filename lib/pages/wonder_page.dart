@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -15,14 +16,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:gif/gif.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:latlong2/latlong.dart' as latLng;
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 class wonder_page extends StatefulWidget {
   final Wonder wond;
@@ -36,9 +43,12 @@ class wonder_page extends StatefulWidget {
 class _wonder_pageState extends State<wonder_page> {
   int _currentPageIndex = 0;
   bool is_map = false;
-  bool is_voir = false;
+  bool isItinairaire = false;
   final Wonder wond;
   final verte = const Color(0xff226900);
+  double userLong = 0.0;
+  double userLat = 0.0;
+  List<latLng.LatLng> routePoints = [];
 
   final PageController _pageStorieController = PageController();
 
@@ -48,11 +58,16 @@ class _wonder_pageState extends State<wonder_page> {
   bool isKeyboardVisible = false;
   late Box<Wonder> favorisBox;
   late final Future<QuerySnapshot> images;
+  String _locationMessage = "";
+  List<LatLng> points = [];
+  MapController mapController = MapController();
 
   @override
   void initState() {
     super.initState();
     _verifyConnection();
+    _getCurrentLocation();
+    _fetchRoute();
     images = FirebaseFirestore.instance
         .collection('images_wonder')
         .where('wonder_id', isEqualTo: wond.idWonder)
@@ -80,6 +95,52 @@ class _wonder_pageState extends State<wonder_page> {
       ));
     }
   }
+
+
+
+
+  void _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Test if location services are enabled.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      setState(() {
+        _locationMessage = "Location services are disabled.";
+      });
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        setState(() {
+          _locationMessage = "Location permissions are denied";
+        });
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      setState(() {
+        _locationMessage = "Location permissions are permanently denied, we cannot request permissions.";
+      });
+      return;
+    }
+
+    // If we reach here, permissions are granted and we can get the location.
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    setState(() {
+      userLat = position.latitude;
+      userLong = position.longitude;
+      _locationMessage = "Latitude: ${position.latitude}, Longitude: ${position.longitude}";
+    });
+  }
+
+
+
 
   @override
   void setState(VoidCallback fn) {
@@ -201,6 +262,26 @@ class _wonder_pageState extends State<wonder_page> {
     return 'http://openweathermap.org/img/wn/$iconId@2x.png';
   }
 
+
+  Future<void> _fetchRoute() async {
+    final response = await http.get(Uri.parse(
+      'https://api.openrouteservice.org/v2/directions/driving-car?api_key=5b3ce3597851110001cf6248b61e34e52a804a1681656eec996f618b&start=${userLong},${userLat}&end=${wond.longitude},${wond.latitude}',
+    ));
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final geometry = data['features'][0]['geometry']['coordinates'] as List;
+
+      setState(() {
+        routePoints = geometry.map((point) {
+          return latLng.LatLng(point[1], point[0]);
+        }).toList();
+      });
+    } else {
+      throw Exception('Failed to load route');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -268,7 +349,7 @@ class _wonder_pageState extends State<wonder_page> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              is_map ? mapsWonder(size) : imagesWonder(size),
+              is_map ? mapsWonder(size) : isItinairaire ? ItinairaireWonder(size) : imagesWonder(size),
               Container(
                   padding:
                   EdgeInsets.only(left: size.width / 16, right: size.width / 16),
@@ -379,37 +460,7 @@ class _wonder_pageState extends State<wonder_page> {
                       )
                     ],
                   ),
-                  Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 35),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(wond.description,
-                              maxLines: is_voir ? 1000 : 4,
-                              style: GoogleFonts.jura(
-                                  textStyle: const TextStyle(
-                                    fontSize: 15,
-                                  ))),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                if (is_voir) {
-                                  is_voir = false;
-                                } else {
-                                  is_voir = true;
-                                }
-                              });
-                            },
-                            child: Text(
-                              is_voir ? "Voir moins" : "Voir plus",
-                              style: GoogleFonts.lalezar(
-                                  textStyle: const TextStyle(
-                                      fontSize: 16,
-                                      decoration: TextDecoration.underline)),
-                            ),
-                          )
-                        ],
-                      )),
+                  descriptionWidget(wond: wond),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1161,7 +1212,10 @@ class _wonder_pageState extends State<wonder_page> {
             ElevatedButton(
                 onPressed: () {
                   if (AuthService().currentUser != null) {
-                    en_developpement(context);
+                    setState((){
+                      isItinairaire = true;
+                      is_map = false;
+                    });
                   } else {
                     connect_first(context);
                   }
@@ -1338,8 +1392,10 @@ class _wonder_pageState extends State<wonder_page> {
               setState(() {
                 if (is_map) {
                   is_map = false;
+                  isItinairaire = false;
                 } else {
                   is_map = true;
+                  isItinairaire = false;
                 }
               });
             },
@@ -1368,7 +1424,80 @@ class _wonder_pageState extends State<wonder_page> {
     return Container(
       height: 350,
       width: size.width,
-      child: const Text("carte localisation lieu"),
+      child: FlutterMap(
+        options: MapOptions(
+          initialCenter: latLng.LatLng(double.parse(wond.latitude), double.parse(wond.longitude)),
+          initialZoom: 14,
+          interactionOptions:
+          const InteractionOptions(flags: ~InteractiveFlag.doubleTapZoom),
+        ),
+        children: [
+          openStreetMapTileLatter,
+          MarkerLayer(markers: [
+            Marker(
+                point: latLng.LatLng(double.parse(wond.latitude), double.parse(wond.longitude)),
+                child: Icon(Icons.location_pin, color: Colors.personnalgreen, size: 50,)
+            )
+          ])
+        ],
+      ),
+    );
+  }
+
+  Container ItinairaireWonder(Size size) {
+    return Container(
+      height: 350,
+      width: size.width,
+      child: FlutterMap(
+        mapController: mapController,
+        options: MapOptions(
+          initialCenter: latLng.LatLng(double.parse(wond.latitude), double.parse(wond.longitude)),
+          initialZoom: 10,
+          interactionOptions:
+          const InteractionOptions(flags: ~InteractiveFlag.doubleTapZoom),
+        ),
+        children: [
+          openStreetMapTileLatter,
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: routePoints,
+                strokeWidth: 4.0,
+                color: Colors.blue,
+              ),
+            ],
+          ),
+
+          MarkerLayer(
+            markers: [
+              Marker(
+                width: 80.0,
+                height: 80.0,
+                point: LatLng(userLat, userLong),
+                child: Container(
+                  child: Icon(
+                    Icons.location_on,
+                    color: Colors.red,
+                    size: 40.0,
+                  ),
+                ),
+              ),
+              Marker(
+                width: 80.0,
+                height: 80.0,
+                point: LatLng(double.parse(wond.latitude), double.parse(wond.longitude)),
+                child: Container(
+                  child: Icon(
+                    Icons.location_on,
+                    color: Colors.green,
+                    size: 40.0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1458,7 +1587,59 @@ class _wonder_pageState extends State<wonder_page> {
 
 
 
+TileLayer get openStreetMapTileLatter => TileLayer(
+  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  userAgentPackageName: 'dev.fleaflet.flutter_map.example',
+);
 
+
+
+
+class descriptionWidget extends StatefulWidget {
+  const descriptionWidget({super.key, required this.wond});
+  final Wonder wond;
+
+  @override
+  State<descriptionWidget> createState() => _descriptionWidgetState();
+}
+
+class _descriptionWidgetState extends State<descriptionWidget> {
+  bool is_voir = false;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        margin: const EdgeInsets.only(top: 10, bottom: 35),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.wond.description,
+                maxLines: is_voir ? 1000 : 4,
+                style: GoogleFonts.jura(
+                    textStyle: const TextStyle(
+                      fontSize: 15,
+                    ))),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (is_voir) {
+                    is_voir = false;
+                  } else {
+                    is_voir = true;
+                  }
+                });
+              },
+              child: Text(
+                is_voir ? "Voir moins" : "Voir plus",
+                style: GoogleFonts.lalezar(
+                    textStyle: const TextStyle(
+                        fontSize: 16,
+                        decoration: TextDecoration.underline)),
+              ),
+            )
+          ],
+        ));
+  }
+}
 
 
 

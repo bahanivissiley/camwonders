@@ -76,6 +76,10 @@ dependencies:
   flutter_share: ^2.0.0
   share_plus: ^9.0.0
   url_launcher: ^6.3.0
+  geolocator: ^12.0.0
+  flutter_polyline_points: ^2.0.0
+  geocoding: ^3.0.0
+  flutter_map_marker_cluster: ^1.3.6
 
 dev_dependencies:
   flutter_test:
@@ -156,6 +160,10 @@ flutter:
     - assets/etiquette.png
     - assets/vide_street.png
     - assets/locationgirl.png
+    - assets/locationHotels.png
+    - assets/locationNature.png
+    - assets/locationPatrimoine.png
+    - assets/locationRestau.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

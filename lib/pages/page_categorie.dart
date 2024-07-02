@@ -63,7 +63,7 @@ class _page_categorieState extends State<page_categorie> {
     final List<Widget> pages = [
       const Menu(),
       const reservations(),
-      Wondershort(),
+      const Wondershort(),
       const page_favoris(),
       const Profil(),
       wondersBody(size: size, listewonderscat: listewonderscat, cat: widget.cat,),

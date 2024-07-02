@@ -169,6 +169,20 @@ class Camwonder {
   }
 
 
+  Future<QuerySnapshot> getWonder() async {
+    try {
+      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('wonders')
+          .get();
+
+      return querySnapshot;
+    } catch (e) {
+      print('Error fetching documents: $e');
+      rethrow;  // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
+    }
+  }
+
+
   void deleteReservation(String documentId) async {
     await FirebaseFirestore.instance
         .collection('reservations')

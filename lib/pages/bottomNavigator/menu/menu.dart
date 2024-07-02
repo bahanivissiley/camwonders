@@ -4,6 +4,8 @@ import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
 import 'package:flutter/material.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
@@ -35,6 +37,7 @@ class _MenuState extends State<Menu> {
   Utilisateur? _user;
   bool _isLoading = true;
   String? _error;
+  String _city = "Chargement...";
 
 
   @override
@@ -43,6 +46,7 @@ class _MenuState extends State<Menu> {
     _pageController = PageController(initialPage: _currentPageIndex);
     loadData();
     _fetchUserInfo();
+    _getUserCity();
   }
 
   Future<void> _fetchUserInfo() async {
@@ -100,6 +104,60 @@ class _MenuState extends State<Menu> {
     return text;
   }
 
+
+  Future<Position> _getUserLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Vérifiez si les services de localisation sont activés.
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Les services de localisation sont désactivés.');
+    }
+
+    // Vérifiez les permissions de localisation.
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Les permissions de localisation sont refusées.');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Les permissions de localisation sont refusées de manière permanente.');
+    }
+
+    // Obtenez la position actuelle de l'utilisateur.
+    return await Geolocator.getCurrentPosition();
+  }
+
+
+  Future<String> _getAddressFromLatLng(Position position) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      Placemark place = placemarks[0];
+      return "${place.country}";
+    } catch (e) {
+      return "Impossible d'obtenir l'adresse.";
+    }
+  }
+
+
+  Future<void> _getUserCity() async {
+    try {
+      Position position = await _getUserLocation();
+      String city = await _getAddressFromLatLng(position);
+      setState(() {
+        _city = city;
+      });
+    } catch (e) {
+      setState(() {
+        _city = "Impossible d'obtenir la ville.";
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
@@ -130,7 +188,7 @@ class _MenuState extends State<Menu> {
               children: [
                 const Icon(LucideIcons.mapPin, color: verte, size: 15,),
                 const SizedBox(width: 3,),
-                Text(truncate("Yaoundé", 8), style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 15)),),
+                Text(truncate(_city, 10), style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 15)),),
               ],
             )
           ],

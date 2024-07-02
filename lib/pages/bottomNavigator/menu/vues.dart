@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/class/Categorie.dart';
 import 'package:camwonders/class/Offre.dart';
 import 'package:camwonders/class/Wonder.dart';
+import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/pages/page_categorie.dart';
 import 'package:camwonders/pages/storie.dart';
@@ -12,12 +14,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:gif/gif.dart';
 //import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:latlong2/latlong.dart' as latLng;
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 
 class ListeVue extends StatefulWidget{
   ListeVue({super.key});
@@ -170,7 +174,7 @@ class _ListeVueState extends State<ListeVue> {
                         _startAutoScroll();
                       },
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 1000),
+                        duration: const Duration(milliseconds: 500),
                         curve: Curves.easeIn,
                         child: Container(
                           width: width,
@@ -273,8 +277,8 @@ class _ListeVueState extends State<ListeVue> {
                             Navigator.push(context, MaterialPageRoute(builder: (context) => page_categorie(cat: cats[index],)))
                                 : showDialog(context: context, builder: (BuildContext context){
                                   return AlertDialog(
-                                    title: Icon(LucideIcons.fileWarning, size: 50, color: Colors.orange,),
-                                    content: Text("Catégorie bientôt disponible", style: GoogleFonts.lalezar(textStyle: TextStyle(fontSize: 20)),),
+                                    title: const Icon(LucideIcons.fileWarning, size: 50, color: Colors.orange,),
+                                    content: Text("Catégorie bientôt disponible", style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 20)),),
                                   );
 
                             });
@@ -342,7 +346,7 @@ class catButton extends StatelessWidget {
           )
         ),
 
-        cat.statut ? Text("") :
+        cat.statut ? const Text("") :
         Container(
           width: width*15/36,
           child: Image.asset("assets/etiquette.png"),
@@ -558,7 +562,7 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
               ),
       child: AnimatedOpacity(
         opacity: _opacity,
-        duration: const Duration(seconds: 1), // Durée de l'effet de transition
+        duration: const Duration(milliseconds: 500), // Durée de l'effet de transition
         child: Stack(
           alignment: Alignment.bottomCenter,
           children: [
@@ -640,17 +644,6 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 class MapVue extends StatefulWidget {
   const MapVue({super.key}); // Correction du constructeur
 
@@ -671,7 +664,7 @@ class _MapVueState extends State<MapVue> with SingleTickerProviderStateMixin {
   }
 
   Future loadData() async{
-    await Future.delayed(const Duration(seconds: 2));
+    //await Future.delayed(const Duration(seconds: 2));
 
     if(mounted){
       setState(() {is_loading = false;});
@@ -734,22 +727,271 @@ class maps extends StatefulWidget {
 }
 
 class _mapsState extends State<maps> {
-  GoogleMapController? mapController;
 
-  //final LatLng _center = const LatLng(3.8480, 11.5021); // Coordonnées du centre du Cameroun
-  static const LatLng _currentlocation = LatLng(37.4223, -122.0848);
-
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
-  }
   @override
   Widget build(BuildContext context) {
-    return const GoogleMap(
-        //onMapCreated: _onMapCreated,
-        initialCameraPosition: CameraPosition(
-          target: _currentlocation,
-          zoom: 13, // Niveau de zoom
+    return FlutterMap(
+      options: const MapOptions(
+        initialCenter: latLng.LatLng(6.308663695718445, 12.619149719332942),
+        initialZoom: 6,
+        interactionOptions:
+          InteractionOptions(flags: ~InteractiveFlag.doubleTapZoom),
+      ),
+      children: [
+        openStreetMapTileLatter,
+        const MarkerLayer(
+            markers: [],
         ),
-      );
+
+        FutureBuilder<QuerySnapshot>(
+          future: FirebaseFirestore.instance.collection('wonders').get(),
+          builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.green,
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return const Center(
+                child: Text("Vous n'êtes pas connecté"),
+              );
+            } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return const Center(
+                child: Text("Aucune donnée trouvée"),
+              );
+            } else {
+              return MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                    maxClusterRadius: 45,
+                    size: const Size(40, 40),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.all(50),
+                    maxZoom: 13,
+                    markers: snapshot.data!.docs.map((DocumentSnapshot document) {
+                      Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+                      Wonder wond = Wonder(
+                          idWonder: document.id,
+                          wonderName: document['wonderName'],
+                          description: document['description'],
+                          imagePath: document['imagePath'],
+                          city: document['city'],
+                          region: document['region'],
+                          free: document['free'],
+                          price: document['price'],
+                          horaire: document['horaire'],
+                          latitude: document['latitude'],
+                          longitude: document['longitude'],
+                          note: (document['note'] as num).toDouble(),
+                          categorie: document['categorie'],
+                          isreservable: document['isreservable']);
+                      return Marker(
+                        point: latLng.LatLng(double.parse(wond.latitude), double.parse(wond.longitude)),
+                        child: WonderMarker(wonder: wond),
+                      );
+                    }).toList(),
+                  builder: (context, markers) {
+                    return Container(
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.personnalgreen),
+                      child: Center(
+                        child: Text(
+                          markers.length.toString(),
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+}
+
+TileLayer get openStreetMapTileLatter => TileLayer(
+  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  userAgentPackageName: 'dev.fleaflet.flutter_map.example',
+);
+
+
+class WonderMarker extends StatelessWidget {
+  final Wonder wonder;
+  const WonderMarker({super.key, required this.wonder});
+
+  String truncate(String text) {
+    if (text.length > 20) {
+      return "${text.substring(0, 20)}...";
+    }
+    return text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+          showDialog(context: context, builder: (BuildContext context){
+            return AlertDialog(
+              contentPadding: EdgeInsets.zero,
+              content: Container(
+                height: 170,
+                width: MediaQuery.of(context).size.width,
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15)
+                ),
+
+                child: Row(
+                  children: [
+                    Container(
+                      height: 170,
+                      width: 120,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: CachedNetworkImage(
+                          cacheManager: CustomCacheManager(),
+                          imageUrl: wonder.imagePath,
+                          placeholder: (context, url) => const Center(child: shimmerOffre(width: 120, height: 170)),
+                          errorWidget: (context, url, error) =>
+                          const Center(child: Icon(Icons.error)),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+
+                    //SizedBox(width: 10,),
+
+                    Container(
+                      padding: const EdgeInsets.all(15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Text(truncate(wonder.wonderName), style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 16, color: Colors.personnalgreen)),),
+
+                          Row(
+                            children: [
+                              Row(
+                                children: [
+                                  // Pleines étoiles
+                                  Row(
+                                    children: List.generate(
+                                      wonder.note.floor(),
+                                          (index) => const Icon(
+                                        Icons.star_rounded,
+                                        color: Colors.orange,
+                                        size: 15,
+                                      ),
+                                    ),
+                                  ),
+                                  // Demi-étoile si nécessaire
+                                  if (wonder.note - wonder.note.floor() !=
+                                      1 &&
+                                      wonder.note - wonder.note.floor() != 0)
+                                    const Icon(
+                                      Icons.star_half_rounded,
+                                      color: Colors.orange,
+                                      size: 15,
+                                    ),
+                                  // Étoiles vides
+                                  if(wonder.note.floor() != 5 &&
+                                      wonder.note - wonder.note.floor() == 0)
+                                    Row(
+                                      children: List.generate(
+                                        5 - wonder.note.floor(),
+                                            (index) => const Icon(
+                                          Icons.star_border_rounded,
+                                          color: Colors.orange,
+                                          size: 15,
+                                        ),
+                                      ),
+                                    ),
+                                  if(wonder.note.floor() != 5 && wonder.note - wonder.note.floor() !=
+                                      1 &&
+                                      wonder.note - wonder.note.floor() != 0)
+                                    Row(
+                                      children: List.generate(
+                                        4 - wonder.note.floor(),
+                                            (index) => const Icon(
+                                          Icons.star_border_rounded,
+                                          color: Colors.orange,
+                                          size: 15,
+                                        ),
+                                      ),
+                                    ),
+                                  if(wonder.note.floor() == 5 && wonder.note - wonder.note.floor() !=
+                                      1 &&
+                                      wonder.note - wonder.note.floor() != 0)
+                                    Row(
+                                      children: List.generate(
+                                        4 - wonder.note.floor(),
+                                            (index) => const Icon(
+                                          Icons.star_border_rounded,
+                                          color: Colors.orange,
+                                          size: 15,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              Container(
+                                margin: const EdgeInsets.only(left: 10, right: 10),
+                                width: 2,
+                                height: 20,
+                                color: const Color(0xff226900),
+                              ),
+                              Text(wonder.note.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold),)
+                            ],
+                          ),
+
+                          Row(
+                            children: [
+                              Text(truncate(wonder.region), style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12)),),
+
+                              const SizedBox(width: 5,),
+
+                              Container(
+                                height: 15,
+                                width: 1,
+                                color: Colors.grey,
+                              ),
+
+                              const SizedBox(width: 5,),
+
+                              Text(truncate(wonder.city), style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12)),),
+                            ],
+                          ),
+
+                          Container(
+                              width: 150,
+                              child: Text("Ce lieu est situé à 24km de votre position", style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),)
+                          ),
+
+                          SizedBox(
+                            height: 30,
+                            child: ElevatedButton(
+                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => wonder_page(wond: wonder))),
+                                child: const Text("Découvrir")
+                            ),
+                          )
+                        ],
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            );
+          });
+      },
+      child: Container(
+        child: wonder.categorie == "Wonders nature" ? Image.asset("assets/locationNature.png")
+            : wonder.categorie == "Wonders patrimoine" ? Image.asset("assets/locationPatrimoine.png")
+            : wonder.categorie == "Wonders hotels" ? Image.asset("assets/locationHotels.png")
+            : Image.asset("assets/locationRestau.png"),
+    ),
+    );
   }
 }

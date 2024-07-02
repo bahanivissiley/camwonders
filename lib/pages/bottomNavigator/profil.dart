@@ -135,11 +135,15 @@ class _ProfilState extends State<Profil> {
     // Ajoutez d'autres notifications selon vos besoins
   ];
 
+  final List<String> themes = [
+    'activé',
+    'Desactivé',
+    // Ajoutez d'autres notifications selon vos besoins
+  ];
+
   final List<String> devises = [
-    'Fcfa',
+    'FCFA',
     'Dollar',
-    'Euro',
-    'Yen',
     // Ajoutez d'autres notifications selon vos besoins
   ];
 
@@ -213,7 +217,7 @@ class _ProfilState extends State<Profil> {
                                       borderRadius: BorderRadius.circular(500),
                                       color: Colors.grey,
                                     ),
-                                    child: Icon(Icons.add, size: 30,)
+                                    child: const Icon(Icons.add, size: 30,)
                                   )
                                 ],
                               ),
@@ -272,7 +276,7 @@ class _ProfilState extends State<Profil> {
                                         borderRadius: BorderRadius.circular(5)),
                                     child: Center(
                                       child: Text(
-                                        "Simple",
+                                        "Gratuit",
                                         style: GoogleFonts.jura(
                                             textStyle: const TextStyle(
                                                 fontSize: 13,
@@ -285,40 +289,12 @@ class _ProfilState extends State<Profil> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            Theme.of(context).brightness == Brightness.light
-                                ? "DARK MODE :"
-                                : "LIGHT MODE :",
-                            style: GoogleFonts.lalezar(
-                                textStyle: const TextStyle(fontSize: 13)),
-                          ),
-                          Transform.scale(
-                            scale: 0.8,
-                            child: Switch(
-                                value: light,
-                                activeColor: Colors.personnalgreen,
-                                onChanged: (bool value) {
-                                  setState(() {
-                                    light = value;
-                                  });
-                                  AdaptiveTheme.of(context).toggleThemeMode();
-                                }),
-                          )
-                        ],
-                      )
                     ],
                   )
                 : const CircularProgressIndicator(
                     color: verte,
                   ),
-            Container(
-              width: size.width * 2 / 3,
-              height: 1,
-              color: Colors.personnalgreen,
-            ),
+
             Column(
               children: [
                 Column(
@@ -342,6 +318,7 @@ class _ProfilState extends State<Profil> {
                                   LucideIcons.languages,
                                   color: verte,
                                 ),
+                                const SizedBox(width: 10),
                                 Text("Langues",
                                     style: GoogleFonts.jura(
                                         textStyle:
@@ -399,6 +376,7 @@ class _ProfilState extends State<Profil> {
                                   LucideIcons.dollarSign,
                                   color: verte,
                                 ),
+                                const SizedBox(width: 10),
                                 Text("Devises",
                                     style: GoogleFonts.jura(
                                         textStyle:
@@ -439,6 +417,68 @@ class _ProfilState extends State<Profil> {
                         });
                       },
                     ),
+
+
+                    PopupMenuButton<String>(
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.grey.withOpacity(0.5),
+                                  width: 1.0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.toggle_on,
+                                  color: verte,
+                                ),
+                                const SizedBox(width: 10),
+                                Text("Thème sombre",
+                                    style: GoogleFonts.jura(
+                                        textStyle:
+                                        const TextStyle(fontSize: 15))),
+                              ],
+                            ),
+                            const Row(
+                              children: [
+                                Icon(LucideIcons.chevronRight,
+                                    color: verte),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                      itemBuilder: (BuildContext context) {
+                        return themes.map((String langue) {
+                          return PopupMenuItem<String>(
+                            value: langue,
+                            child: SizedBox(
+                              width: size.width,
+                              child: Text(langue),
+                            ),
+                          );
+                        }).toList();
+                      },
+                      onSelected: (String langue) {
+                        // Traitez la notification sélectionnée ici
+                        if (langue == "activé"){
+                          setState(() {
+                            AdaptiveTheme.of(context).setDark();
+                          });
+                        }else{
+                          AdaptiveTheme.of(context).setLight();
+                        }
+
+                      },
+                    ),
+
+
                     GestureDetector(
                       onTap: () {
                         showDialog(
@@ -490,6 +530,7 @@ class _ProfilState extends State<Profil> {
                                   LucideIcons.helpCircle,
                                   color: verte,
                                 ),
+                                const SizedBox(width: 10),
                                 Text("Assistance",
                                     style: GoogleFonts.jura(
                                         textStyle:
@@ -586,6 +627,82 @@ class _ProfilState extends State<Profil> {
                         ),
                       ),
                     ),
+                    GestureDetector(
+                      onTap: () async {
+                        if (AuthService().currentUser != null) {
+                          showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title:
+                                  const Center(child: Text("Deconnexion")),
+                                  content: const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        LucideIcons.helpCircle,
+                                        size: 70,
+                                        color: Colors.red,
+                                      ),
+                                      Center(
+                                          child: Text(
+                                            "ETES VOUS SUR DE VOULOIR VOUS DECONNECTER ?",
+                                            textAlign: TextAlign.center,
+                                          ))
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
+                                        child: const Text("Annuler")),
+                                    ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.redAccent),
+                                        onPressed: () async {
+                                          await AuthService().signOut();
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                const Inscription()),
+                                                (Route<dynamic> route) => false,
+                                          );
+                                        },
+                                        child: const Text("Deconnecter"))
+                                  ],
+                                );
+                              });
+                        } else {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(
+                            content:
+                            Center(child: Text("Vous n'etes pas connecté")),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.green,
+                          ));
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.grey.withOpacity(0.5),
+                                  width: 1.0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("Supprimer mon compte",
+                                style: GoogleFonts.jura(
+                                    textStyle: const TextStyle(
+                                        color: Colors.red, fontSize: 15)))
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 )
               ],
@@ -604,6 +721,14 @@ class _ProfilState extends State<Profil> {
                   color: verte,
                 )),
               ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Version de l'application : 1.0.0",
+              style: GoogleFonts.jura(
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                  )),
             ),
             const SizedBox(height: 10),
           ],

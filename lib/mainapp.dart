@@ -5,6 +5,8 @@ import 'package:camwonders/pages/bottomNavigator/menu/menu.dart';
 import 'package:camwonders/pages/bottomNavigator/profil.dart';
 import 'package:camwonders/pages/bottomNavigator/wondershort.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 //import 'package:flutter/widgets.dart';
 //import 'package:google_fonts/google_fonts.dart';
@@ -22,12 +24,16 @@ class _MainAppState extends State<MainApp> {
   int _selectedItem = 0;
   static const verte = Colors.personnalgreen;
   DateTime? lastPressed;
-  final List<Widget> _pages = [const Menu(), const reservations(), Wondershort(), const page_favoris(), const Profil()];
+  final List<Widget> _pages = [Menu(), const reservations(), Wondershort(), const page_favoris(), const Profil()];
+
 
   @override
   void initState() {
     super.initState();
   }
+
+
+
 
 
   void _changePage(int index) {
@@ -99,7 +105,7 @@ class _MainAppState extends State<MainApp> {
                     child: IconButton(onPressed: () => _changePage(0), icon: Icon(LucideIcons.layoutGrid, size: 20, color: _selectedItem == 0 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
                   ),
 
-                  Text("Accueil", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 0 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                  Text("Accueil", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 0 ? verte : Colors.grey, fontWeight: _selectedItem == 0 ? FontWeight.bold : FontWeight.normal)),)
                 ],
               ),
 
@@ -117,7 +123,7 @@ class _MainAppState extends State<MainApp> {
                       child: IconButton(onPressed: () => _changePage(1), icon: Icon(LucideIcons.calendarClock, size: 20, color: _selectedItem == 1 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
                   ),
 
-                  Text("Reservations", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 1 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                  Text("Reservations", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 1 ? verte : Colors.grey, fontWeight: _selectedItem == 1 ? FontWeight.bold : FontWeight.normal)),)
                 ],
               ),
 
@@ -135,7 +141,7 @@ class _MainAppState extends State<MainApp> {
                     child: IconButton(onPressed: () => _changePage(2), icon: Icon(LucideIcons.listVideo, size: 20, color: _selectedItem == 2 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
                   ),
 
-                  Text("Videos", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 2 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                  Text("Videos", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 2 ? verte : Colors.grey, fontWeight: _selectedItem == 2 ? FontWeight.bold : FontWeight.normal)),)
                 ],
               ),
 
@@ -153,7 +159,7 @@ class _MainAppState extends State<MainApp> {
                       child: IconButton(onPressed: () => _changePage(3), icon: Icon(LucideIcons.heart, size: 20, color: _selectedItem == 3 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
                   ),
 
-                  Text("Favoris", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 3 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                  Text("Favoris", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 3 ? verte : Colors.grey, fontWeight: _selectedItem == 3 ? FontWeight.bold : FontWeight.normal)),)
                 ],
               ),
 
@@ -171,7 +177,7 @@ class _MainAppState extends State<MainApp> {
                     child: IconButton(onPressed: () => _changePage(4), icon: Icon(LucideIcons.user, size: 20, color: _selectedItem == 4 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
                   ),
 
-                  Text("Profil", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 4 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                  Text("Profil", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 4 ? verte : Colors.grey, fontWeight: _selectedItem == 4 ? FontWeight.bold : FontWeight.normal)),)
                 ],
               )
             ],
