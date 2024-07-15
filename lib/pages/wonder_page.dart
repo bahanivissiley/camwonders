@@ -2165,53 +2165,58 @@ class Storie extends StatelessWidget {
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
     double height = size.height;
-    return Container(
-      margin: const EdgeInsets.only(left: 10),
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          Container(
-              width: 140,
-              height: 150,
-              margin: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
+    return GestureDetector(
+      onTap: (){
+        Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => wonder_page(wond: wond)));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(left: 10),
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+                width: 140,
+                height: 150,
+                margin: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+
+              child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
+                child: CachedNetworkImage(
+                  cacheManager: CustomCacheManager(),
+                  imageUrl: wond.imagePath,
+                  placeholder: (context, url) => Center(child: shimmerOffre(height: 200, width: MediaQuery.of(context).size.width,)),
+                  errorWidget: (context, url, error) => const Center(child: Icon(Icons.error)),
+                  fit: BoxFit.cover,
+                ),
               ),
 
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: CachedNetworkImage(
-                cacheManager: CustomCacheManager(),
-                imageUrl: wond.imagePath,
-                placeholder: (context, url) => Center(child: shimmerOffre(height: 200, width: MediaQuery.of(context).size.width,)),
-                errorWidget: (context, url, error) => const Center(child: Icon(Icons.error)),
-                fit: BoxFit.cover,
-              ),
             ),
-
-          ),
-          Container(
-              margin: const EdgeInsets.all(5),
-              padding: const EdgeInsets.all(5),
-              height: 40,
-              width: 140,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                color: verte.withOpacity(0.8),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                      child: Text(truncate(wond.wonderName),
-                    style: GoogleFonts.lalezar(
-                        textStyle: const TextStyle(color: Colors.white)),
-                  )),
-                  //Text(wond.city, style: GoogleFonts.jura(textStyle: const TextStyle(color: Colors.white)),),
-                ],
-              )),
-        ],
+            Container(
+                margin: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(5),
+                height: 40,
+                width: 140,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  color: verte.withOpacity(0.8),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                        child: Text(truncate(wond.wonderName),
+                      style: GoogleFonts.lalezar(
+                          textStyle: const TextStyle(color: Colors.white)),
+                    )),
+                    //Text(wond.city, style: GoogleFonts.jura(textStyle: const TextStyle(color: Colors.white)),),
+                  ],
+                )),
+          ],
+        ),
       ),
     );
   }

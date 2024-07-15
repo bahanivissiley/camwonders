@@ -225,11 +225,15 @@ class _ProfilState extends State<Profil> {
                           )
                         ],
                       ),
-                      Text(
-                        _user!.nom,
-                        style: GoogleFonts.lalezar(
-                            textStyle:
-                                const TextStyle(fontSize: 20, color: verte)),
+                      Padding(
+                        padding: const EdgeInsets.all(15.0),
+                        child: Text(
+                          _user!.nom,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.lalezar(
+                              textStyle:
+                                  const TextStyle(fontSize: 20, color: verte)),
+                        ),
                       ),
                       Text(
                         _user!.identifiant,

@@ -37,7 +37,7 @@ class _MenuState extends State<Menu> {
   Utilisateur? _user;
   bool _isLoading = true;
   String? _error;
-  String _city = "Chargement...";
+  String _city = "...";
 
 
   @override

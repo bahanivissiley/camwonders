@@ -198,7 +198,7 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
 
                                   await Future.delayed(const Duration(seconds: 2));
 
-                                  Navigator.push(context, PageRouteBuilder(
+                                  Navigator.pushReplacement(context, PageRouteBuilder(
                                     pageBuilder: (context, animation, secondaryAnimation) => MainApp(),
                                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                         animation = CurvedAnimation(parent: animation, curve: Curves.easeIn);
