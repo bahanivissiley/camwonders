@@ -70,6 +70,31 @@ class Avis{
   }
 }
 
+
+class Guide{
+  // ignore: non_constant_identifier_names
+  final String id;
+  final String numero;
+  final String nom;
+  final String wonder;
+  final String profilPath;
+
+  Guide({required this.id, required this.numero, required this.nom, required this.wonder, required this.profilPath});
+
+  factory Guide.fromDocument(DocumentSnapshot doc) {
+    return Guide(
+      id: doc.id,
+      numero: doc['identifiant'] as String,
+      nom: doc['name']as String,
+      wonder: doc['wonder'],
+      profilPath: doc['profilPath'] as String,
+    );
+  }
+
+
+
+}
+
 class Comment{
   final String idComment;
   final String content;

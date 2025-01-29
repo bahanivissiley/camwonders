@@ -35,12 +35,19 @@ class _ProfilState extends State<Profil> {
   bool _isLoading = true;
   String? _error;
   String profilpath = "";
-
+  String devise = "...";
 
   @override
   void initState() {
     super.initState();
     _fetchUserInfo();
+    chargercached();
+  }
+
+  Future<void> chargercached() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    devise = prefs.getString('devise')!;
+    _selectedDevise = devise;
   }
 
   @override
@@ -54,8 +61,6 @@ class _ProfilState extends State<Profil> {
   void dispose() {
     super.dispose();
   }
-
-
 
   Future<void> _fetchUserInfo() async {
     try {
@@ -84,22 +89,24 @@ class _ProfilState extends State<Profil> {
     });
 
     if (_image != null) {
-
-      String fileName = _image!.name; // Vous pouvez générer un nom unique si nécessaire
+      String fileName =
+          _image!.name; // Vous pouvez générer un nom unique si nécessaire
       File imageFile = File(_image!.path);
       try {
-        if(_image!.path != "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a"){
+        if (_image!.path !=
+            "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a") {
           print("J'entre dans la suppression");
           print(profilpath);
-          try{
+          try {
             final storageR = FirebaseStorage.instance.refFromURL(profilpath);
             await storageR.delete();
-          }catch (e){
+          } catch (e) {
             print("Erreur");
           }
         }
 
-        final storageRef = FirebaseStorage.instance.ref().child('profilsUser/$fileName');
+        final storageRef =
+            FirebaseStorage.instance.ref().child('profilsUser/$fileName');
         await storageRef.putFile(imageFile);
 
         // Récupérer l'URL de téléchargement
@@ -122,10 +129,7 @@ class _ProfilState extends State<Profil> {
         print('Erreur lors de l\'upload de l\'image: $e');
       }
 
-
-
       print(_image!.path);
-
     }
   }
 
@@ -167,25 +171,36 @@ class _ProfilState extends State<Profil> {
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(200),
-                              color: Theme.of(context).brightness == light ? Colors.grey : Colors.black38,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? Colors.grey
+                                  : Colors.black38,
                             ),
                             margin: const EdgeInsets.all(15),
                             height: MediaQuery.of(context).size.height / 6,
                             width: MediaQuery.of(context).size.height / 6,
-
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(500),
-                              child: CachedNetworkImage(
-                                cacheManager: CustomCacheManagerLong(),
-                                imageUrl: profilpath,
-                                placeholder: (context, url) => const Center(
-                                    child: CircularProgressIndicator(
-                                  color: Colors.personnalgreen,
-                                )),
-                                errorWidget: (context, url, error) =>
-                                    const Center(child: Icon(Icons.error)),
-                                fit: BoxFit.cover,
-                              ),
+                              child: _image !=
+                                      null // Vérifie si une image a été sélectionnée
+                                  ? Image.file(
+                                      File(_image!
+                                          .path), // Affiche l'image locale
+                                      fit: BoxFit.cover,
+                                    )
+                                  : CachedNetworkImage(
+                                      cacheManager: CustomCacheManagerLong(),
+                                      imageUrl: profilpath,
+                                      placeholder: (context, url) =>
+                                          const Center(
+                                              child: CircularProgressIndicator(
+                                        color: Color(0xff226900),
+                                      )),
+                                      errorWidget: (context, url, error) =>
+                                          const Center(
+                                              child: Icon(Icons.error)),
+                                      fit: BoxFit.cover,
+                                    ),
                             ),
                           ),
                           GestureDetector(
@@ -200,14 +215,11 @@ class _ProfilState extends State<Profil> {
                                 ));
                               } else {
                                 _pickImage();
-                                setState(() {});
                               }
                             },
-
                             child: Container(
                               width: MediaQuery.of(context).size.height / 5.8,
                               height: MediaQuery.of(context).size.height / 5.8,
-
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -217,12 +229,15 @@ class _ProfilState extends State<Profil> {
                                       borderRadius: BorderRadius.circular(500),
                                       color: Colors.grey,
                                     ),
-                                    child: const Icon(Icons.add, size: 30,)
-                                  )
+                                    child: const Icon(
+                                      Icons.add,
+                                      size: 30,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                          )
+                          ),
                         ],
                       ),
                       Padding(
@@ -298,7 +313,6 @@ class _ProfilState extends State<Profil> {
                 : const CircularProgressIndicator(
                     color: verte,
                   ),
-
             Column(
               children: [
                 Column(
@@ -414,15 +428,16 @@ class _ProfilState extends State<Profil> {
                           );
                         }).toList();
                       },
-                      onSelected: (String devise) {
+                      onSelected: (String devise) async {
                         // Traitez la notification sélectionnée ici
+                        SharedPreferences prefs =
+                            await SharedPreferences.getInstance();
+                        prefs.setString("devise", devise);
                         setState(() {
                           _selectedDevise = devise;
                         });
                       },
                     ),
-
-
                     PopupMenuButton<String>(
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(20, 15, 20, 15),
@@ -446,13 +461,12 @@ class _ProfilState extends State<Profil> {
                                 Text("Thème sombre",
                                     style: GoogleFonts.jura(
                                         textStyle:
-                                        const TextStyle(fontSize: 15))),
+                                            const TextStyle(fontSize: 15))),
                               ],
                             ),
                             const Row(
                               children: [
-                                Icon(LucideIcons.chevronRight,
-                                    color: verte),
+                                Icon(LucideIcons.chevronRight, color: verte),
                               ],
                             )
                           ],
@@ -471,40 +485,74 @@ class _ProfilState extends State<Profil> {
                       },
                       onSelected: (String langue) {
                         // Traitez la notification sélectionnée ici
-                        if (langue == "activé"){
+                        if (langue == "activé") {
                           setState(() {
                             AdaptiveTheme.of(context).setDark();
                           });
-                        }else{
+                        } else {
                           AdaptiveTheme.of(context).setLight();
                         }
-
                       },
                     ),
-
-
                     GestureDetector(
                       onTap: () {
                         showDialog(
                             context: context,
                             builder: (BuildContext context) {
                               return AlertDialog(
-                                title: const Text("Demandez une assistance"),
-                                content: const Text(
-                                    "Comment voulez-vous nous contacter pour assistance ?"),
+                                title: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                        decoration: BoxDecoration(
+                                            color:
+                                                Colors.green.withOpacity(0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(500)),
+                                        height: 80,
+                                        width: 80,
+                                        child: const Icon(
+                                          Icons.help,
+                                          size: 40,
+                                          color: Colors.green,
+                                        )),
+                                  ],
+                                ),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      "Demandez une assistance",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 25),
+                                    ),
+                                    const Text(
+                                        "Comment voulez-vous nous contacter pour assistance ?"),
+                                  ],
+                                ),
                                 actions: [
-                                  Container(
+                                  SizedBox(
                                     width: MediaQuery.of(context).size.width,
                                     child: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceAround,
                                       children: [
-                                        const ElevatedButton(
-                                            onPressed: null,
-                                            child: Text("Email")),
-                                        const ElevatedButton(
-                                            onPressed: null,
-                                            child: Text("WhatsApp")),
+                                        SizedBox(
+                                          width:
+                                              MediaQuery.of(context).size.width,
+                                          child: const ElevatedButton(
+                                              onPressed: null,
+                                              child: Text("Email")),
+                                        ),
+                                        SizedBox(
+                                          width:
+                                              MediaQuery.of(context).size.width,
+                                          child: const ElevatedButton(
+                                              onPressed: null,
+                                              child: Text("WhatsApp")),
+                                        ),
                                         TextButton(
                                             onPressed: () =>
                                                 Navigator.of(context).pop(),
@@ -562,42 +610,76 @@ class _ProfilState extends State<Profil> {
                               context: context,
                               builder: (BuildContext context) {
                                 return AlertDialog(
-                                  title:
-                                      const Center(child: Text("Deconnexion")),
+                                  title: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                          decoration: BoxDecoration(
+                                              color:
+                                                  Colors.red.withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(500)),
+                                          height: 80,
+                                          width: 80,
+                                          child: const Icon(
+                                            Icons.help,
+                                            size: 40,
+                                            color: Colors.red,
+                                          )),
+                                    ],
+                                  ),
                                   content: const Column(
                                     mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        LucideIcons.helpCircle,
-                                        size: 70,
-                                        color: Colors.red,
+                                      Text(
+                                        "Deconnexion",
+                                        style: TextStyle(
+                                            fontSize: 25,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       Center(
                                           child: Text(
-                                        "ETES VOUS SUR DE VOULOIR VOUS DECONNECTER ?",
-                                        textAlign: TextAlign.center,
+                                        "Etes vous sûr de vouloir vous déconnecter de votre compte ?",
+                                        style: TextStyle(color: Colors.grey),
                                       ))
                                     ],
                                   ),
                                   actions: [
-                                    TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
-                                        child: const Text("Annuler")),
-                                    ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.redAccent),
-                                        onPressed: () async {
-                                          await AuthService().signOut();
-                                          Navigator.pushAndRemoveUntil(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const Inscription()),
-                                            (Route<dynamic> route) => false,
-                                          );
-                                        },
-                                        child: const Text("Deconnecter"))
+                                    Column(
+                                      children: [
+                                        SizedBox(
+                                          width:
+                                              MediaQuery.of(context).size.width,
+                                          child: ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.redAccent),
+                                              onPressed: () async {
+                                                await AuthService().signOut();
+                                                Navigator.pushAndRemoveUntil(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          const Inscription()),
+                                                  (Route<dynamic> route) =>
+                                                      false,
+                                                );
+                                              },
+                                              child: const Text("Deconnecter")),
+                                        ),
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(),
+                                            child: const Text(
+                                              "Annuler",
+                                              style:
+                                                  TextStyle(color: Colors.red),
+                                            )),
+                                      ],
+                                    )
                                   ],
                                 );
                               });
@@ -638,42 +720,77 @@ class _ProfilState extends State<Profil> {
                               context: context,
                               builder: (BuildContext context) {
                                 return AlertDialog(
-                                  title:
-                                  const Center(child: Text("Deconnexion")),
+                                  title: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                          decoration: BoxDecoration(
+                                              color:
+                                                  Colors.red.withOpacity(0.2),
+                                              borderRadius:
+                                                  BorderRadius.circular(500)),
+                                          height: 80,
+                                          width: 80,
+                                          child: const Icon(
+                                            Icons.help,
+                                            size: 40,
+                                            color: Colors.red,
+                                          )),
+                                    ],
+                                  ),
                                   content: const Column(
                                     mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        LucideIcons.helpCircle,
-                                        size: 70,
-                                        color: Colors.red,
+                                      Text(
+                                        "Suppression",
+                                        style: TextStyle(
+                                            fontSize: 25,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       Center(
                                           child: Text(
-                                            "ETES VOUS SUR DE VOULOIR VOUS DECONNECTER ?",
-                                            textAlign: TextAlign.center,
-                                          ))
+                                        "Vous allez supprimer votre compte, etes vous sur de vouloir continuer",
+                                        style: TextStyle(color: Colors.grey),
+                                      ))
                                     ],
                                   ),
                                   actions: [
-                                    TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
-                                        child: const Text("Annuler")),
-                                    ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.redAccent),
-                                        onPressed: () async {
-                                          await AuthService().signOut();
-                                          Navigator.pushAndRemoveUntil(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                const Inscription()),
-                                                (Route<dynamic> route) => false,
-                                          );
-                                        },
-                                        child: const Text("Deconnecter"))
+                                    Column(
+                                      children: [
+                                        SizedBox(
+                                          width:
+                                              MediaQuery.of(context).size.width,
+                                          child: ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.redAccent),
+                                              onPressed: () async {
+                                                await AuthService().signOut();
+                                                Navigator.pushAndRemoveUntil(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          const Inscription()),
+                                                  (Route<dynamic> route) =>
+                                                      false,
+                                                );
+                                              },
+                                              child:
+                                                  const Text("Oui supprimer")),
+                                        ),
+                                        TextButton(
+                                            onPressed: () =>
+                                                Navigator.of(context).pop(),
+                                            child: const Text(
+                                              "Annuler",
+                                              style:
+                                                  TextStyle(color: Colors.red),
+                                            )),
+                                      ],
+                                    )
                                   ],
                                 );
                               });
@@ -681,7 +798,7 @@ class _ProfilState extends State<Profil> {
                           ScaffoldMessenger.of(context)
                               .showSnackBar(const SnackBar(
                             content:
-                            Center(child: Text("Vous n'etes pas connecté")),
+                                Center(child: Text("Vous n'etes pas connecté")),
                             behavior: SnackBarBehavior.floating,
                             backgroundColor: Colors.green,
                           ));
@@ -731,8 +848,8 @@ class _ProfilState extends State<Profil> {
               "Version de l'application : 1.0.0",
               style: GoogleFonts.jura(
                   textStyle: const TextStyle(
-                    fontSize: 12,
-                  )),
+                fontSize: 12,
+              )),
             ),
             const SizedBox(height: 10),
           ],

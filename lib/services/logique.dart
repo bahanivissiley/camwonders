@@ -1,7 +1,7 @@
 import 'package:camwonders/class/Wonder.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:internet_connection_checker/internet_connection_checker.dart';
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:http/http.dart' as http;
 
 class Logique {
@@ -17,14 +17,9 @@ class Logique {
   }
 
   static Future<bool> checkInternetConnection() async {
-    bool result = await InternetConnectionChecker().hasConnection;
-    if (result){
-      try {
-        await http.get(Uri.parse('https://www.google.com')).timeout(Duration(seconds: 10));
-        return true;
-      } catch (e) {
-        return false;
-      }
+    final bool isConnected = await InternetConnection().hasInternetAccess;
+    if (isConnected){
+      return true;
     }else{
       return false;
     }

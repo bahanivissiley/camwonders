@@ -1,38 +1,33 @@
-import 'dart:developer';
 import 'package:camwonders/class/Offre.dart';
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/class/WonderShort.dart';
-import 'package:camwonders/class/classes.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Camwonder {
-
   Stream<List<WonderShort>> getWonderShortStream() {
     return FirebaseFirestore.instance
         .collection('wondershorts')
         .snapshots()
         .map((querySnapshot) => querySnapshot.docs
-        .map((doc) => WonderShort(
-      idWonderShort: doc.id,
-      like: doc['like'],
-      desc: doc['desc'],
-      videoPath: doc['videoPath'],
-      dateUpload: doc['dateUpload'],
-      vues: doc['vues'],
-      wond: doc['wond'],
-    ))
-        .toList());
+            .map((doc) => WonderShort(
+                  idWonderShort: doc.id,
+                  like: doc['like'],
+                  desc: doc['desc'],
+                  videoPath: doc['videoPath'],
+                  dateUpload: doc['dateUpload'],
+                  vues: doc['vues'],
+                  wond: doc['wond'],
+                ))
+            .toList());
   }
-
-
 
   Future<void> createUser(
       String? nom, String? identifiant, String id, String? profilPath) async {
-    CollectionReference users = FirebaseFirestore.instance.collection('users');
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final CollectionReference users = FirebaseFirestore.instance.collection('users');
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
     if (await checkIfUserExists(id)) {
       await prefs.setString('id', id);
       await prefs.setString('nom', nom!);
@@ -62,15 +57,16 @@ class Camwonder {
         await prefs.setString('nom', nom!);
         await prefs.setString('identifiant', identifiant!);
         await prefs.setBool('premium', false);
-        await prefs.setString(
-            'profilPath', "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a");
+        await prefs.setString('profilPath',
+            "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a");
         return users
             .add({
               'id': id,
               'name': nom,
               'identifiant': identifiant,
               'premium': false,
-              'profilPath': "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a",
+              'profilPath':
+                  "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a",
             })
             .then((value) => print("User added successfully!"))
             .catchError((error) => print("Failed to add user: $error"));
@@ -79,13 +75,13 @@ class Camwonder {
   }
 
   Future<bool> checkIfUserExists(String userId) async {
-    CollectionReference users = FirebaseFirestore.instance.collection('users');
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    Utilisateur? user = await getUserByAuthId(AuthService().currentUser!.uid);
+    final CollectionReference users = FirebaseFirestore.instance.collection('users');
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final Utilisateur? user = await getUserByAuthId(AuthService().currentUser!.uid);
     try {
-      CollectionReference users =
+      final CollectionReference users =
           FirebaseFirestore.instance.collection('users');
-      QuerySnapshot<Object?> document =
+      final QuerySnapshot<Object?> document =
           await users.where('id', isEqualTo: userId).get();
       if (document.docs.isNotEmpty) {
         await prefs.setString('id', AuthService().currentUser!.uid);
@@ -104,11 +100,11 @@ class Camwonder {
   }
 
   Future<Utilisateur> getUserInfo() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? nom = prefs.getString('nom');
-    String? identifiant = prefs.getString('identifiant');
-    bool? premium = prefs.getBool('premium');
-    String? profilPath = prefs.getString('profilPath');
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? nom = prefs.getString('nom');
+    final String? identifiant = prefs.getString('identifiant');
+    final bool? premium = prefs.getBool('premium');
+    final String? profilPath = prefs.getString('profilPath');
 
     if (nom == null || identifiant == null) {
       return Utilisateur(
@@ -116,7 +112,8 @@ class Camwonder {
           identifiant: "Pas connecté",
           nom: "Utilisateur inconnu",
           premium: false,
-          profilPath: "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a");
+          profilPath:
+              "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilsUser%2Finconnu.jpg?alt=media&token=55ceb311-ebf1-42ba-b7c2-e701d46c8b1b");
     }
 
     if (profilPath == null) {
@@ -156,7 +153,7 @@ class Camwonder {
 
   Future<QuerySnapshot> getReservations() async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('reservations')
           .where('user', isEqualTo: AuthService().currentUser!.uid)
           .get();
@@ -164,24 +161,21 @@ class Camwonder {
       return querySnapshot;
     } catch (e) {
       print('Error fetching documents: $e');
-      rethrow;  // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
+      rethrow; // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
     }
   }
 
-
   Future<QuerySnapshot> getWonder() async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('wonders')
-          .get();
+      final QuerySnapshot querySnapshot =
+          await FirebaseFirestore.instance.collection('wonders').get();
 
       return querySnapshot;
     } catch (e) {
       print('Error fetching documents: $e');
-      rethrow;  // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
+      rethrow; // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
     }
   }
-
 
   void deleteReservation(String documentId) async {
     await FirebaseFirestore.instance
@@ -190,10 +184,9 @@ class Camwonder {
         .delete();
   }
 
-
-  Future<Wonder?>  getWonderById(String wonderId) async {
+  Future<Wonder?> getWonderById(String wonderId) async {
     try {
-      DocumentSnapshot WonderDoc = await FirebaseFirestore.instance
+      final DocumentSnapshot WonderDoc = await FirebaseFirestore.instance
           .collection('wonders')
           .doc(wonderId)
           .get();
@@ -209,7 +202,7 @@ class Camwonder {
 
   Future<Utilisateur?> getUserByAuthId(String userId) async {
     try {
-      QuerySnapshot<Map<String, dynamic>> querySnapshot =
+      final QuerySnapshot<Map<String, dynamic>> querySnapshot =
           await FirebaseFirestore.instance
               .collection('users')
               .where('id', isEqualTo: userId)
@@ -217,7 +210,7 @@ class Camwonder {
 
       if (querySnapshot.docs.isNotEmpty) {
         // Assuming there is only one document with the userId
-        DocumentSnapshot<Map<String, dynamic>> userDoc =
+        final DocumentSnapshot<Map<String, dynamic>> userDoc =
             querySnapshot.docs.first;
         return Utilisateur.fromDocument(userDoc);
       } else {
@@ -229,14 +222,13 @@ class Camwonder {
     }
   }
 
-
-
   Future<Utilisateur?> getUserByUniqueId(String userId) async {
     try {
-      DocumentSnapshot<Map<String, dynamic>> querySnapshot =
-      await FirebaseFirestore.instance
-          .collection('users').doc(userId)
-          .get();
+      final DocumentSnapshot<Map<String, dynamic>> querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
 
       if (querySnapshot.exists) {
         return Utilisateur.fromDocument(querySnapshot);

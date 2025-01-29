@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:camwonders/auth_pages/suite_inscription.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:crypto/crypto.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -21,17 +22,6 @@ class AuthService{
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  Future signInWithEmailAndPassword(String email, String password) async {
-    try {
-      final credential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password
-      );
-      return credential.user;
-    }catch (e) {
-      return null;
-    }
-  }
 
   Future signInWithPhoneNumber(String phone_number, BuildContext context) async {
     await _auth.verifyPhoneNumber(
@@ -42,7 +32,7 @@ class AuthService{
     verificationFailed: (FirebaseAuthException e) {
       if (e.code == 'invalid-phone-number') {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Le numero de telephone est invalide.')),
+            const SnackBar(content: Text('Le numero de telephone est invalide.')),
           );
         }
     },
@@ -50,15 +40,20 @@ class AuthService{
       Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => Suite_Inscription(phoneNumber: phone_number, verificationId: verificationId,)));
     },
     codeAutoRetrievalTimeout: (String verificationId) {},
-    timeout: Duration(seconds: 30),
+    timeout: const Duration(seconds: 30),
   );
   }
 
   Future<User?> signInWithGoogle() async {
+    print("Etape 1");
     try {
+      print("Etape 2");
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
+      print("Etape 3");
+
       if (googleUser != null) {
+        print("Etape 4");
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
         final AuthCredential credential = GoogleAuthProvider.credential(
@@ -66,16 +61,19 @@ class AuthService{
           idToken: googleAuth.idToken,
         );
 
+
         final UserCredential userCredential = await _auth.signInWithCredential(credential);
         return userCredential.user;
       } else {
         return null;  // L'utilisateur a annulé la connexion.
       }
     } on FirebaseAuthException catch (e) {
-      print('FirebaseAuthException: $e');
+      print("Une exception de firebaseAuth");
+      print(e);
       return null;
     } catch (e) {
-      print('Exception: $e');
+      print("Une autre erreur");
+      print(e);
       return null;
     }
   }

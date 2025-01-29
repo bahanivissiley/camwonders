@@ -183,6 +183,13 @@ class Wonder {
         .snapshots();
   }
 
+  Stream<QuerySnapshot> getGuide() {
+    return FirebaseFirestore.instance
+        .collection('guides')
+        .where('wonder', isEqualTo: idWonder)
+        .snapshots();
+  }
+
   Future<void> addAvis(String content, double note) async {
     Utilisateur user = await Camwonder().getUserInfo();
     QuerySnapshot<Map<String, dynamic>> querySnapshot =

@@ -1,7 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/class/classes.dart';
 import 'package:camwonders/pages/wonder_page.dart';
+import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/services/logique.dart';
+import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -75,53 +78,68 @@ class _page_favorisState extends State<page_favoris> {
                         return await showDialog<bool>(context: context,
                           builder: (BuildContext context) {
                             return AlertDialog(
-                              title: const Center(child: Text("Suppression")),
-                              content: Container(
-                                padding: const EdgeInsets.all(20),
-                                height: 150,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    const Icon(LucideIcons.helpCircle, color: Colors.red, size: 50,),
-                                    Container(
-                                      child: Center(child: Text("Etes vous sur de vouloir supprimer ?", textAlign: TextAlign.center , style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),))
-                                    )
-                                  ],
-                                ),
+                              title: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                      decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(500)
+                                      ),
+                                      height: 80,
+                                      width: 80,
+                                      child: const Icon(Icons.help, size: 40, color: Colors.red,)
+                                  ),
+                                ],
+                              ),
+                              content: const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Suppression", style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),),
+                                  Center(
+                                      child: Text(
+                                        "Etes vous sûr de vouloir supprimer cette element de la reservation ?",
+                                        style: TextStyle(color: Colors.grey),
+                                      ))
+                                ],
                               ),
 
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(context),
-                                child: Text("Annuler", style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white),)),
-
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red
-                                  ),
-                                  onPressed: (){
-                                    Navigator.pop(context);
-                                    setState(() {
-                                      Logique().supprimerFavorisWonder(index);
-                                    });
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Container(
-                                          height: 50,
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,borderRadius: BorderRadius.circular(10)
+                                SizedBox(
+                                  width: MediaQuery.of(context).size.width,
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red
+                                    ),
+                                    onPressed: (){
+                                      Navigator.pop(context);
+                                      setState(() {
+                                        Logique().supprimerFavorisWonder(index);
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Container(
+                                            height: 50,
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,borderRadius: BorderRadius.circular(10)
+                                          ),
+                                          child: const Center(child: Text("Element suprimé des Favoris !")),
                                         ),
-                                        child: const Center(child: Text("Element suprimé des Favoris !")),
-                                      ),
-                                      duration: const Duration(seconds: 1),
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: Colors.transparent,
-                                      elevation: 0,
+                                        duration: const Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                        backgroundColor: Colors.transparent,
+                                        elevation: 0,
 
-                                      )
-                                    );
-                                  },
+                                        )
+                                      );
+                                    },
 
-                                child: const Text("Supprimer"))
+                                  child: const Text("Supprimer")),
+                                ),
+                                TextButton(onPressed: () => Navigator.pop(context),
+                                    child: Text("Annuler", style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white),)),
+
                               ],
                             );
                           });
@@ -167,52 +185,68 @@ class _page_favorisState extends State<page_favoris> {
                         showDialog(context: context,
                           builder: (BuildContext context) {
                             return AlertDialog(
-                              title: const Center(child: Text("Suppression")),
-                              content: Container(
-                                padding: const EdgeInsets.all(20),
-                                height: 150,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    const Icon(LucideIcons.helpCircle, color: Colors.red, size: 50,),
-                                    Container(
-                                      child: Center(child: Text("Etes vous sur de vouloir supprimer ?", textAlign: TextAlign.center , style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),))
-                                    )
-                                  ],
-                                ),
+                              title: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                      decoration: BoxDecoration(
+                                          color: Colors.red.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(500)
+                                      ),
+                                      height: 80,
+                                      width: 80,
+                                      child: const Icon(Icons.help, size: 40, color: Colors.red,)
+                                  ),
+                                ],
+                              ),
+                              content: const Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Suppression", style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),),
+                                  Center(
+                                      child: Text(
+                                        "Etes vous sûr de vouloir supprimer cette element de la reservation ?",
+                                        style: TextStyle(color: Colors.grey),
+                                      ))
+                                ],
                               ),
 
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(context),
-                                child: Text("Annuler", style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white),)),
-
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red
-                                  ),
-                                  onPressed: (){
-                                    Navigator.pop(context);
-                                    setState(() {
-                                      Logique().supprimerFavorisWonder(index);
-                                    });
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Container(
-                                          height: 50,
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,borderRadius: BorderRadius.circular(10)
-                                        ),
-                                        child: const Center(child: Text("Element suprimé des Favoris !")),
+                                SizedBox(
+                                  width: MediaQuery.of(context).size.width,
+                                  child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red
                                       ),
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: Colors.transparent,
-                                      elevation: 0,
-                                      
-                                      )
-                                    );
-                                  },
-                                
-                                child: const Text("Supprimer"))
+                                      onPressed: (){
+                                        Navigator.pop(context);
+                                        setState(() {
+                                          Logique().supprimerFavorisWonder(index);
+                                        });
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Container(
+                                                height: 50,
+                                                decoration: BoxDecoration(
+                                                    color: Colors.red,borderRadius: BorderRadius.circular(10)
+                                                ),
+                                                child: const Center(child: Text("Element suprimé des Favoris !")),
+                                              ),
+                                              duration: const Duration(seconds: 1),
+                                              behavior: SnackBarBehavior.floating,
+                                              backgroundColor: Colors.transparent,
+                                              elevation: 0,
+
+                                            )
+                                        );
+                                      },
+
+                                      child: const Text("Supprimer")),
+                                ),
+                                TextButton(onPressed: () => Navigator.pop(context),
+                                    child: Text("Annuler", style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white),)),
+
                               ],
                             );
                           });
@@ -258,15 +292,19 @@ class favoris_widget extends StatelessWidget {
         //mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            height: MediaQuery.of(context).size.width/4,
-            width: MediaQuery.of(context).size.width/4,
+            height: MediaQuery.of(context).size.width / 4,
+            width: MediaQuery.of(context).size.width / 4,
             margin: const EdgeInsets.only(right: 5),
-            decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-              image: DecorationImage(
-                  image: NetworkImage(wond.imagePath),
-                  fit: BoxFit.cover
-                )
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: CachedNetworkImage(
+                cacheManager: CustomCacheManager(),
+                imageUrl: wond.imagePath,
+                placeholder: (context, url) => Center(child: shimmerOffre(width: MediaQuery.of(context).size.width / 4, height: MediaQuery.of(context).size.width / 4)),
+                errorWidget: (context, url, error) =>
+                const Center(child: Icon(Icons.error)),
+                fit: BoxFit.cover,
+              )
             ),
           ),
 

@@ -10,8 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-
-
 class reservations extends StatefulWidget {
   const reservations({super.key});
 
@@ -21,11 +19,18 @@ class reservations extends StatefulWidget {
 
 class _reservationsState extends State<reservations> {
   List<Reservations> reservations = [];
-  static Future<QuerySnapshot<Object?>> futurreservations = Camwonder().getReservations();
+  Future<QuerySnapshot<Object?>>? futureReservations;
 
   @override
   void initState() {
     super.initState();
+    fetchReservations();
+  }
+
+  void fetchReservations() {
+    setState(() {
+      futureReservations = Camwonder().getReservations();
+    });
   }
 
   @override
@@ -38,8 +43,8 @@ class _reservationsState extends State<reservations> {
               child: Text(
             "Reservations",
             style: GoogleFonts.lalezar(
-                textStyle: const TextStyle(
-                    color: Colors.personnalgreen, fontSize: 23)),
+                textStyle:
+                    const TextStyle(color: Color(0xff226900), fontSize: 23)),
           )),
         ),
         body: Column(
@@ -49,36 +54,51 @@ class _reservationsState extends State<reservations> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Text("Toutes vos reservations", textAlign: TextAlign.left, style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 30)),),
-                  Text("Cliquez pour avoir les informations sur chaque reservation", textAlign: TextAlign.center, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 15, color: Colors.grey, fontWeight: FontWeight.bold)),)
+                  Text(
+                    "Toutes vos reservations",
+                    textAlign: TextAlign.left,
+                    style: GoogleFonts.lalezar(
+                        textStyle: const TextStyle(fontSize: 30)),
+                  ),
+                  Text(
+                    "Cliquez pour avoir les informations sur chaque reservation",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.jura(
+                        textStyle: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold)),
+                  )
                 ],
               ),
             ),
             Expanded(
               child: FutureBuilder<QuerySnapshot>(
-                  future: Camwonder().getReservations(),
+                  future: futureReservations,
                   builder: (BuildContext context,
                       AsyncSnapshot<QuerySnapshot<Object?>> snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
                           child: CircularProgressIndicator(
-                        color: Colors.personnalgreen,
+                        color: Color(0xff226900),
                       ));
                     } else if (snapshot.hasError) {
                       return const Center(
                         child: Text("Vous n'etes pas connecté "),
                       );
-                    } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    } else if (!snapshot.hasData ||
+                        snapshot.data!.docs.isEmpty) {
                       return Center(
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
                             height: size.height / 12,
-                            child: Theme.of(context).brightness == Brightness.light
-                                ? Image.asset('assets/vide_light.png')
-                                : Image.asset('assets/vide_dark.png'),
+                            child:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? Image.asset('assets/vide_light.png')
+                                    : Image.asset('assets/vide_dark.png'),
                           ),
                           const Text("Pas de reservations")
                         ],
@@ -86,12 +106,24 @@ class _reservationsState extends State<reservations> {
                     } else {
                       return ListView(
                         shrinkWrap: true,
-                        children:
-                            snapshot.data!.docs.map((DocumentSnapshot document) {
+                        children: snapshot.data!.docs
+                            .map((DocumentSnapshot document) {
                           Map<String, dynamic> data =
                               document.data() as Map<String, dynamic>;
-                          Reservations reservation = Reservations(idReservation: document.id, user: data['user'], nbrePersonnes: data['nbrePersonnes'], numeroTel: data['numeroTel'], idWonder: data['idWonder'], date: data['date'], isvalidate: data['isvalidate'], isload: data['isload'], motif: data['motif']);
-                          return FavorisWidget(reservation: reservation);
+                          Reservations reservation = Reservations(
+                              idReservation: document.id,
+                              user: data['user'],
+                              nbrePersonnes: data['nbrePersonnes'],
+                              numeroTel: data['numeroTel'],
+                              idWonder: data['idWonder'],
+                              date: data['date'],
+                              isvalidate: data['isvalidate'],
+                              isload: data['isload'],
+                              motif: data['motif']);
+                          return FavorisWidget(
+                            reservation: reservation,
+                            Ondelete: fetchReservations,
+                          );
                         }).toList(),
                       );
                     }
@@ -106,9 +138,11 @@ class FavorisWidget extends StatefulWidget {
   const FavorisWidget({
     super.key,
     required this.reservation,
+    required this.Ondelete,
   });
 
   final Reservations reservation;
+  final VoidCallback Ondelete;
 
   @override
   State<FavorisWidget> createState() => _FavorisWidgetState();
@@ -129,15 +163,17 @@ class _FavorisWidgetState extends State<FavorisWidget> {
       longitude: "chargement...",
       note: 0.0,
       categorie: "chargement...",
-      isreservable: false
-  );
+      isreservable: false);
+
+  bool isNetworkImage = false;
+
   String truncate(String text) {
     if (text.length > 25) {
       return "${text.substring(0, 25)}...";
     }
     return text;
   }
-  
+
   @override
   void initState() {
     super.initState();
@@ -145,10 +181,12 @@ class _FavorisWidgetState extends State<FavorisWidget> {
   }
 
   void _loadWond() async {
-    Wonder? wondd = await Camwonder().getWonderById(widget.reservation.idWonder);
+    Wonder? wondd =
+        await Camwonder().getWonderById(widget.reservation.idWonder);
     setState(() {
       if (wondd != null) {
         wond = wondd;
+        isNetworkImage = true;
       }
     });
   }
@@ -156,89 +194,126 @@ class _FavorisWidgetState extends State<FavorisWidget> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: (){
-        Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => ReservationDetails(reservation: widget.reservation, wond: wond),
-            transitionsBuilder: (_,animation,__,child){
-              return SlideTransition(
-                position: Tween<Offset> (begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut, reverseCurve: Curves.easeInOutBack)),
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 700)
-        )
-        );
+      onTap: () {
+        Navigator.push(
+            context,
+            PageRouteBuilder(
+                pageBuilder: (_, __, ___) => ReservationDetails(
+                    reservation: widget.reservation, wond: wond),
+                transitionsBuilder: (_, animation, __, child) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                            begin: const Offset(-1.0, 0.0), end: Offset.zero)
+                        .animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeInOut,
+                            reverseCurve: Curves.easeInOutBack)),
+                    child: child,
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 700)));
       },
       child: Dismissible(
         key: Key(wond.wonderName),
         background: Container(
             margin: const EdgeInsets.only(left: 10),
             decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(10)
-            ),
-            child: const Center(child: Icon(LucideIcons.trash, color: Colors.white,))
-        ),
-
+                color: Colors.red, borderRadius: BorderRadius.circular(10)),
+            child: const Center(
+                child: Icon(
+              LucideIcons.trash,
+              color: Colors.white,
+            ))),
         confirmDismiss: (DismissDirection direction) async {
-          return await showDialog<bool>(context: context,
+          return await showDialog<bool>(
+              context: context,
               builder: (BuildContext context) {
                 return AlertDialog(
-                  title: const Center(child: Text("Suppression")),
-                  content: Container(
-                    padding: const EdgeInsets.all(20),
-                    height: 150,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        const Icon(LucideIcons.helpCircle, color: Colors.red, size: 50,),
-                        Container(
-                            child: Center(child: Text("Etes vous sur de vouloir supprimer ?", textAlign: TextAlign.center , style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),))
-                        )
-                      ],
-                    ),
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                          decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(500)),
+                          height: 80,
+                          width: 80,
+                          child: const Icon(
+                            Icons.help,
+                            size: 40,
+                            color: Colors.red,
+                          )),
+                    ],
                   ),
-
+                  content: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Suppression",
+                        style: TextStyle(
+                            fontSize: 25, fontWeight: FontWeight.bold),
+                      ),
+                      Center(
+                          child: Text(
+                        "Etes vous sûr de vouloir supprimer cette reservation ?",
+                        style: TextStyle(color: Colors.grey),
+                      ))
+                    ],
+                  ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context),
-                        child: Text("Annuler", style: TextStyle(color: Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white),)),
-
-                    ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red
-                        ),
-                        onPressed: (){
-                          Navigator.pop(context);
-                          Camwonder().deleteReservation(widget.reservation.idReservation);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Container(
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                      color: Colors.red,borderRadius: BorderRadius.circular(10)
+                    Column(
+                      children: [
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width,
+                          child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red),
+                              onPressed: () {
+                                Navigator.pop(context);
+                                Camwonder().deleteReservation(
+                                    widget.reservation.idReservation);
+                                widget.Ondelete();
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                  content: Container(
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
+                                    child: const Center(
+                                        child: Text(
+                                            "Element suprimé des Favoris !")),
                                   ),
-                                  child: const Center(child: Text("Element suprimé des Favoris !")),
-                                ),
-                                duration: const Duration(seconds: 1),
-                                behavior: SnackBarBehavior.floating,
-                                backgroundColor: Colors.transparent,
-                                elevation: 0,
-
-                              )
-                          );
-                        },
-
-                        child: const Text("Supprimer"))
+                                  duration: const Duration(seconds: 1),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.transparent,
+                                  elevation: 0,
+                                ));
+                              },
+                              child: const Text("Supprimer")),
+                        ),
+                        TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text(
+                              "Annuler",
+                              style: TextStyle(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? Colors.black
+                                      : Colors.white),
+                            )),
+                      ],
+                    )
                   ],
                 );
               });
         },
-
-        onDismissed: (DismissDirection direction){
-          Navigator.pop(context);
+        onDismissed: (DismissDirection direction) {
           Camwonder().deleteReservation(widget.reservation.idReservation);
+          widget.Ondelete();
         },
-
-
         child: Container(
           //width: MediaQuery.of(context).size.width*4/5,
           margin: const EdgeInsets.only(
@@ -258,15 +333,24 @@ class _FavorisWidgetState extends State<FavorisWidget> {
                 width: MediaQuery.of(context).size.width / 4,
                 margin: const EdgeInsets.only(right: 5),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: CachedNetworkImage(
-                    cacheManager: CustomCacheManager(),
-                    imageUrl: wond.imagePath,
-                    placeholder: (context, url) => Center(child: shimmerOffre(width: MediaQuery.of(context).size.width / 4, height: MediaQuery.of(context).size.width / 4)),
-                    errorWidget: (context, url, error) =>
-                    const Center(child: Icon(Icons.error)),
-                    fit: BoxFit.cover,
-                  ),
+                  borderRadius: BorderRadius.circular(11),
+                  child: isNetworkImage
+                      ? CachedNetworkImage(
+                          cacheManager: CustomCacheManager(),
+                          imageUrl: wond.imagePath,
+                          placeholder: (context, url) => Center(
+                              child: shimmerOffre(
+                                  width: MediaQuery.of(context).size.width / 4,
+                                  height:
+                                      MediaQuery.of(context).size.width / 4)),
+                          errorWidget: (context, url, error) =>
+                              const Center(child: Icon(Icons.error)),
+                          fit: BoxFit.cover,
+                        )
+                      : Center(
+                          child: shimmerOffre(
+                              width: MediaQuery.of(context).size.width / 4,
+                              height: MediaQuery.of(context).size.width / 4)),
                 ),
               ),
               Column(
@@ -284,8 +368,7 @@ class _FavorisWidgetState extends State<FavorisWidget> {
                       Text(
                         'Reservation de ${widget.reservation.nbrePersonnes} personnes',
                         style: GoogleFonts.jura(
-                            textStyle: const TextStyle(
-                                fontSize: 13)),
+                            textStyle: const TextStyle(fontSize: 13)),
                       ),
                       Text(
                         'Date : ${widget.reservation.date}',
@@ -293,66 +376,96 @@ class _FavorisWidgetState extends State<FavorisWidget> {
                             textStyle: const TextStyle(
                                 fontSize: 13, color: Colors.grey)),
                       ),
-
                     ],
                   ),
-
-                  widget.reservation.isload ?
-                  Container(
-                    decoration: const BoxDecoration(
-                        borderRadius: BorderRadius.only(topRight: Radius.circular(12), bottomRight: Radius.circular(12))
-                    ),
-                    child: Center(child: Text("En cours", style: GoogleFonts.lalezar(textStyle: const TextStyle(color: Colors.amber,)),)),
-                  ) : widget.reservation.isvalidate ?
-                  Container(
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12)
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            decoration: const BoxDecoration(
-                                borderRadius: BorderRadius.only(topRight: Radius.circular(12))
-                            ),
-                            child: Center(child: Text("Traité", style: GoogleFonts.lalezar(textStyle: const TextStyle()),)),
-                          ),
-                          Container(
-                            decoration: const BoxDecoration(
-                                borderRadius: BorderRadius.only(bottomRight: Radius.circular(12))
-                            ),
-                            child: Center(child: Text("Disponible", style: GoogleFonts.lalezar(textStyle: const TextStyle(color: Colors.personnalgreen,)),)),
-                          ),
-                        ],
-                      )
-                  ) :
-                  Container(
-                      decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12)
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            decoration: const BoxDecoration(
-                                borderRadius: BorderRadius.only(topRight: Radius.circular(12))
-                            ),
-                            child: Center(child: Text("Traité", style: GoogleFonts.lalezar(textStyle: const TextStyle()),)),
-                          ),
-                          Container(
-                            decoration: const BoxDecoration(
-                                borderRadius: BorderRadius.only(bottomRight: Radius.circular(12))
-                            ),
-                            child: Center(child: Text("Pas disponible", style: GoogleFonts.lalezar(textStyle: const TextStyle(color: Colors.red,)),)),
-                          ),
-                        ],
-                      )
-                  )
+                  widget.reservation.isload
+                      ? Container(
+                          decoration: const BoxDecoration(
+                              borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(12),
+                                  bottomRight: Radius.circular(12))),
+                          child: Center(
+                              child: Text(
+                            "En cours",
+                            style: GoogleFonts.lalezar(
+                                textStyle: const TextStyle(
+                              color: Colors.amber,
+                            )),
+                          )),
+                        )
+                      : widget.reservation.isvalidate
+                          ? Container(
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                        borderRadius: BorderRadius.only(
+                                            topRight: Radius.circular(12))),
+                                    child: Center(
+                                        child: Text(
+                                      "Traité",
+                                      style: GoogleFonts.lalezar(
+                                          textStyle: const TextStyle()),
+                                    )),
+                                  ),
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                        borderRadius: BorderRadius.only(
+                                            bottomRight: Radius.circular(12))),
+                                    child: Center(
+                                        child: Text(
+                                      "Disponible",
+                                      style: GoogleFonts.lalezar(
+                                          textStyle: const TextStyle(
+                                        color: Color(0xff226900),
+                                      )),
+                                    )),
+                                  ),
+                                ],
+                              ))
+                          : Container(
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12)),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                        borderRadius: BorderRadius.only(
+                                            topRight: Radius.circular(12))),
+                                    child: Center(
+                                        child: Text(
+                                      "Traité",
+                                      style: GoogleFonts.lalezar(
+                                          textStyle: const TextStyle()),
+                                    )),
+                                  ),
+                                  Container(
+                                    decoration: const BoxDecoration(
+                                        borderRadius: BorderRadius.only(
+                                            bottomRight: Radius.circular(12))),
+                                    child: Center(
+                                        child: Text(
+                                      "Pas disponible",
+                                      style: GoogleFonts.lalezar(
+                                          textStyle: const TextStyle(
+                                        color: Colors.red,
+                                      )),
+                                    )),
+                                  ),
+                                ],
+                              ))
                 ],
               ),
-              Icon(Icons.arrow_forward_ios_rounded, size: 20, color: Colors.personnalgreen,),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 20,
+                color: Color(0xff226900),
+              ),
               SizedBox(width: 5),
-
             ],
           ),
         ),

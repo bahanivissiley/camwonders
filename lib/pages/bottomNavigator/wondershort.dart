@@ -13,12 +13,14 @@ import 'package:camwonders/services/logique.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:carousel_slider/carousel_controller.dart' as carousel_slider;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:video_player/video_player.dart';
 
+
 class Wondershort extends StatefulWidget {
-  const Wondershort({Key? key}) : super(key: key);
+  const Wondershort({super.key});
 
   @override
   State<Wondershort> createState() => _WondershortState();
@@ -40,33 +42,6 @@ class _WondershortState extends State<Wondershort> {
     _verifyConnection();
   }
 
-  void _preloadInitialVideos() {
-    _wondershortStream.listen((List<WonderShort> wondershorts) {
-      for (int i = 0; i < _preloadOffset; i++) {
-        _addVideoController(wondershorts[i]);
-      }
-    });
-  }
-
-  void _preloadMoreVideos(List<WonderShort> wondershorts, int startIndex) {
-    for (int i = startIndex;
-        i < startIndex + _preloadOffset && i < wondershorts.length;
-        i++) {
-      _addVideoController(wondershorts[i]);
-    }
-  }
-
-  void _addVideoController(WonderShort wonderShort) {
-    VideoPlayerController controller =
-        VideoPlayerController.network(wonderShort.videoPath)
-          ..initialize().then((_) {
-            _controllers[0].play(); // Commencez à lire la première vidéo
-            _controllers[0].setLooping(true);
-            setState(() {});
-          });
-    _controllers.add(controller);
-  }
-
   @override
   void dispose() {
     for (var controller in _controllers) {
@@ -75,12 +50,50 @@ class _WondershortState extends State<Wondershort> {
     super.dispose();
   }
 
-  void _verifyConnection() async {
-    if (!(await Logique.checkInternetConnection())) {
+  void _preloadInitialVideos() {
+    _wondershortStream.listen((List<WonderShort> wondershorts) {
+      for (int i = 0; i < _preloadOffset && i < wondershorts.length; i++) {
+        _addVideoController(wondershorts[i]);
+      }
+    });
+  }
+
+  void _preloadMoreVideos(List<WonderShort> wondershorts, int startIndex) {
+    for (int i = startIndex; i < startIndex + _preloadOffset && i < wondershorts.length; i++) {
+      _addVideoController(wondershorts[i]);
+    }
+  }
+
+  void _addVideoController(WonderShort wonderShort) async {
+    try {
+      final VideoPlayerController controller = VideoPlayerController.network(wonderShort.videoPath);
+      await controller.initialize();
+      if (!mounted) return; // Vérifier si le widget est toujours monté
+
+      setState(() {
+        _controllers.add(controller);
+        if (_controllers.length == 1) {
+          // Démarrer la première vidéo
+          _controllers[_currentIndex].play();
+          _controllers[_currentIndex].setLooping(true);
+        }
+      });
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("Connectez-vous à internet"),
+        content: Text("Erreur lors du chargement de la vidéo"),
         backgroundColor: Colors.red,
       ));
+    }
+  }
+
+  void _verifyConnection() async {
+    if (!(await Logique.checkInternetConnection())) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Connectez-vous à internet"),
+          backgroundColor: Colors.red,
+        ));
+      }
     }
   }
 
@@ -90,12 +103,11 @@ class _WondershortState extends State<Wondershort> {
       stream: _wondershortStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Text('Something went wrong');
+          return const Center(child: Text('Quelque chose a mal tourné'));
         }
 
         if (!snapshot.hasData) {
-          return const Center(
-              child: CircularProgressIndicator(color: Colors.green));
+          return const Center(child: CircularProgressIndicator(color: Colors.green));
         }
 
         List<WonderShort> wondershorts = snapshot.data!;
@@ -109,8 +121,7 @@ class _WondershortState extends State<Wondershort> {
                 viewportFraction: 1.0,
                 onPageChanged: (index, reason) {
                   if (index >= _currentIndex + _preloadOffset - 1) {
-                    _preloadMoreVideos(
-                        wondershorts, _currentIndex + _preloadOffset);
+                    _preloadMoreVideos(wondershorts, _currentIndex + _preloadOffset);
                   }
 
                   _controllers[_currentIndex].pause();
@@ -140,10 +151,7 @@ class _WondershortState extends State<Wondershort> {
                         fontSize: 20,
                         color: Colors.black,
                         shadows: [
-                          Shadow(
-                              color: Colors.black26,
-                              offset: Offset(0, 3),
-                              blurRadius: 6)
+                          Shadow(color: Colors.black26, offset: Offset(0, 3), blurRadius: 6)
                         ],
                       ),
                     ),
@@ -155,10 +163,7 @@ class _WondershortState extends State<Wondershort> {
                         fontSize: 25,
                         color: PostContent.verte,
                         shadows: [
-                          Shadow(
-                              color: Colors.black26,
-                              offset: Offset(0, 3),
-                              blurRadius: 6)
+                          Shadow(color: Colors.black26, offset: Offset(0, 3), blurRadius: 6)
                         ],
                       ),
                     ),
@@ -188,22 +193,9 @@ class VideoShort extends StatefulWidget {
 }
 
 class _VideoShortState extends State<VideoShort> {
-  Wonder _wonder = Wonder(
-    idWonder: "chargement...",
-    wonderName: "chargement...",
-    description: "chargement...",
-    imagePath: "chargement...",
-    city: "chargement...",
-    region: "chargement...",
-    free: false,
-    price: 500,
-    horaire: "chargement...",
-    latitude: "chargement...",
-    longitude: "chargement...",
-    note: 0.0,
-    categorie: "chargement...",
-    isreservable: false
-  );
+  Wonder? _wonder; // Utiliser null pour indiquer que les données sont en cours de chargement
+  bool _isLoading = true; // Indicateur de chargement
+  String? _errorMessage; // Message d'erreur en cas de problème
 
   @override
   void initState() {
@@ -212,10 +204,23 @@ class _VideoShortState extends State<VideoShort> {
   }
 
   Future<void> _fetchWonder() async {
-    Wonder? futureWonder = await Camwonder().getWonderById(widget.item.wond);
-    if (futureWonder != null) {
+    try {
+      Wonder? futureWonder = await Camwonder().getWonderById(widget.item.wond);
+      if (futureWonder != null) {
+        setState(() {
+          _wonder = futureWonder;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = "Impossible de charger les données.";
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
       setState(() {
-        _wonder = futureWonder;
+        _errorMessage = "Une erreur s'est produite : $e";
+        _isLoading = false;
       });
     }
   }
@@ -226,14 +231,35 @@ class _VideoShortState extends State<VideoShort> {
       children: [
         VideoPlayer(widget.controller),
         Positioned.fill(
-          child: PostContent(
-            wondshort: widget.item,
-            wonder: _wonder,
-            controller: widget.controller,
-          ),
+          child: _buildContent(),
         ),
       ],
     );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      // Afficher un indicateur de chargement pendant le chargement des données
+      return Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    } else if (_errorMessage != null) {
+      // Afficher un message d'erreur si le chargement a échoué
+      return Center(
+        child: Text(
+          _errorMessage!,
+          style: TextStyle(color: Colors.white, fontSize: 16),
+          textAlign: TextAlign.center,
+        ),
+      );
+    } else {
+      // Afficher le contenu une fois les données chargées
+      return PostContent(
+        wondshort: widget.item,
+        wonder: _wonder!,
+        controller: widget.controller,
+      );
+    }
   }
 }
 
@@ -283,11 +309,11 @@ class _PostContentState extends State<PostContent> {
                                 fontSize: 20,
                                 color: Colors.white,
                                 shadows: [
-                              Shadow(
-                                  color: Colors.black26,
-                                  offset: Offset(0, 3),
-                                  blurRadius: 6)
-                            ])),
+                                  Shadow(
+                                      color: Colors.black26,
+                                      offset: Offset(0, 3),
+                                      blurRadius: 6)
+                                ])),
                       ),
                       Text(
                         "${widget.wondshort.desc}...",
@@ -297,11 +323,11 @@ class _PostContentState extends State<PostContent> {
                                 fontSize: 15,
                                 color: Colors.white,
                                 shadows: [
-                              Shadow(
-                                  color: Colors.black26,
-                                  offset: Offset(0, 3),
-                                  blurRadius: 6)
-                            ])),
+                                  Shadow(
+                                      color: Colors.black26,
+                                      offset: Offset(0, 3),
+                                      blurRadius: 6)
+                                ])),
                       ),
                     ],
                   ),
@@ -331,18 +357,18 @@ class _PostContentState extends State<PostContent> {
                                 transitionsBuilder: (_, animation, __, child) {
                                   return SlideTransition(
                                     position: Tween<Offset>(
-                                            begin: const Offset(1.0, 0.0),
-                                            end: Offset.zero)
+                                        begin: const Offset(1.0, 0.0),
+                                        end: Offset.zero)
                                         .animate(CurvedAnimation(
-                                            parent: animation,
-                                            curve: Curves.easeInOut,
-                                            reverseCurve:
-                                                Curves.easeInOutBack)),
+                                        parent: animation,
+                                        curve: Curves.easeInOut,
+                                        reverseCurve:
+                                        Curves.easeInOutBack)),
                                     child: child,
                                   );
                                 },
                                 transitionDuration:
-                                    const Duration(milliseconds: 700),
+                                const Duration(milliseconds: 700),
                               ),
                             );
                           },
@@ -359,7 +385,7 @@ class _PostContentState extends State<PostContent> {
                             borderRadius: BorderRadius.circular(100)),
                         child: IconButton(
                           onPressed: () {
-                            if(AuthService().currentUser != null){
+                            if (AuthService().currentUser != null) {
                               setState(() {
                                 isLiked = !isLiked;
                                 if (isLiked) {
@@ -370,14 +396,17 @@ class _PostContentState extends State<PostContent> {
                                   widget.wondshort.like--;
                                 }
                               });
-                            }else{
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vous n'etes pas connecté !")));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                      Text("Vous n'etes pas connecté !")));
                             }
                           },
                           icon: isLiked
                               ? const Icon(Icons.favorite, color: Colors.red)
                               : const Icon(Icons.favorite_border_outlined,
-                                  color: PostContent.verte),
+                              color: PostContent.verte),
                         ),
                       ),
                       Text(widget.wondshort.like.toString(),
@@ -420,7 +449,7 @@ class _PostContentState extends State<PostContent> {
                             // Handle share functionality
                           },
                           icon:
-                              const Icon(Icons.share, color: PostContent.verte),
+                          const Icon(Icons.share, color: PostContent.verte),
                         ),
                       ),
                     ],
@@ -434,6 +463,12 @@ class _PostContentState extends State<PostContent> {
     );
   }
 }
+
+
+
+
+
+
 
 class CommentWidget extends StatefulWidget {
   const CommentWidget({super.key, required this.wondershort});
@@ -471,7 +506,6 @@ class _CommentWidgetState extends State<CommentWidget> {
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -523,7 +557,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                               child: const Column(
                                 children: [
                                   CircularProgressIndicator(
-                                      color: Colors.personnalgreen)
+                                      color: Color(0xff226900))
                                 ],
                               ),
                             );
@@ -535,7 +569,8 @@ class _CommentWidgetState extends State<CommentWidget> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Container(
-                                  height: MediaQuery.of(context).size.height / 20,
+                                  height:
+                                      MediaQuery.of(context).size.height / 20,
                                   margin: const EdgeInsets.all(20),
                                   child: Theme.of(context).brightness ==
                                           Brightness.light
@@ -551,8 +586,13 @@ class _CommentWidgetState extends State<CommentWidget> {
                             shrinkWrap: true,
                             itemCount: snapshot.data!.docs.length,
                             itemBuilder: (BuildContext context, int index) {
-                              DocumentSnapshot document = snapshot.data!.docs[index];
-                              Comment com = Comment(idComment: document.id, content: document['content'], wondershort: document['wondershort'], user: document['user']);
+                              DocumentSnapshot document =
+                                  snapshot.data!.docs[index];
+                              Comment com = Comment(
+                                  idComment: document.id,
+                                  content: document['content'],
+                                  wondershort: document['wondershort'],
+                                  user: document['user']);
                               return CommentaireWidget(com: com);
                             },
                             separatorBuilder:
@@ -582,7 +622,8 @@ class _CommentWidgetState extends State<CommentWidget> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 Container(
-                  height: 45,
+                  height: 40,
+                  width: 40,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(500),
                     color: Colors.grey,
@@ -594,7 +635,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                       imageUrl: _user!.profilPath,
                       placeholder: (context, url) => const Center(
                           child: CircularProgressIndicator(
-                        color: Colors.personnalgreen,
+                        color: Color(0xff226900),
                       )),
                       errorWidget: (context, url, error) =>
                           const Center(child: Icon(Icons.error)),
@@ -630,7 +671,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                   icon: const Icon(
                     LucideIcons.send,
                     size: 25,
-                    color: Colors.personnalgreen,
+                    color: Color(0xff226900),
                   ),
                 ),
               ],
@@ -642,7 +683,6 @@ class _CommentWidgetState extends State<CommentWidget> {
   }
 }
 
-
 class CommentaireWidget extends StatefulWidget {
   const CommentaireWidget({super.key, required this.com});
   final Comment com;
@@ -653,81 +693,90 @@ class CommentaireWidget extends StatefulWidget {
 
 class _CommentaireWidgetState extends State<CommentaireWidget> {
   String username = "Chargement...";
-  String profilPath = "...";
+  String profilPath = "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png"; // Remplacer par l'URL d'une image par défaut
   bool _isLoading = true;
-  
+
   @override
   void initState() {
     super.initState();
     _loadUser();
-    if(mounted){
-      setState(() {
-        _isLoading = false;
-      });
-    }
   }
 
   void _loadUser() async {
-    Utilisateur? user = await Camwonder().getUserByUniqueId(widget.com.user);
-    setState(() {
-      if (user != null) {
-        username = user.nom;
-        profilPath = user.profilPath;
-      } else {
-        username = 'Anonyme';
+    // Appel de la méthode pour récupérer l'utilisateur
+    try {
+      Utilisateur? user = await Camwonder().getUserByUniqueId(widget.com.user);
+      // Vérification de l'état du widget avant de mettre à jour l'état
+      if (mounted) {
+        setState(() {
+          if (user != null) {
+            username = user.nom.isNotEmpty ? user.nom : 'Anonyme'; // Gestion du nom vide
+            profilPath = user.profilPath.isNotEmpty
+                ? user.profilPath
+                : "https://example.com/default_profile.png"; // Remplace par une URL d'image par défaut
+          } else {
+            username = 'Anonyme';
+            profilPath = "https://example.com/default_profile.png"; // Image par défaut
+          }
+          _isLoading = false; // Mise à jour de l'état de chargement
+        });
       }
-    });
+    } catch (e) {
+      // Gestion des erreurs lors de la récupération de l'utilisateur
+      if (mounted) {
+        setState(() {
+          username = 'Erreur lors du chargement';
+          profilPath = "https://example.com/default_profile.png"; // Image par défaut en cas d'erreur
+          _isLoading = false; // Met à jour l'état de chargement
+        });
+      }
+      print("Erreur lors de la récupération de l'utilisateur: $e"); // Log de l'erreur
+    }
   }
-  
+
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Row(
           children: [
-            _isLoading ?
-        Container(
-        padding: const EdgeInsets.all(10),
-        child: const CircularProgressIndicator(color: Colors.personnalgreen,)) :
-            Container(
-              margin:
-              const EdgeInsets.only(right: 15),
-              height:
-              MediaQuery.of(context).size.height /
-                  18,
-              width:
-              MediaQuery.of(context).size.height /
-                  18,
-              decoration: BoxDecoration(
-                borderRadius:
-                BorderRadius.circular(30),
-                color: Colors.grey,
-              ),
-              
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(500),
-                child: CachedNetworkImage(
-                  cacheManager: CustomCacheManagerLong(),
-                  imageUrl: profilPath,
-                  placeholder: (context, url) => const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.personnalgreen,
-                      )),
-                  errorWidget: (context, url, error) =>
-                  const Center(child: Icon(Icons.error)),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
+            _isLoading
+                ? Container(
+                    padding: const EdgeInsets.all(10),
+                    child: const CircularProgressIndicator(
+                      color: Color(0xff226900),
+                    ))
+                : Container(
+                    margin: const EdgeInsets.only(right: 15),
+                    height: MediaQuery.of(context).size.height / 18,
+                    width: MediaQuery.of(context).size.height / 18,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: Colors.grey,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(500),
+                      child: CachedNetworkImage(
+                        cacheManager: CustomCacheManagerLong(),
+                        imageUrl: profilPath,
+                        placeholder: (context, url) => const Center(
+                            child: CircularProgressIndicator(
+                          color: Color(0xff226900),
+                        )),
+                        errorWidget: (context, url, error) =>
+                            const Center(child: Icon(Icons.error)),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
             Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   username,
                   style: GoogleFonts.lalezar(
-                    textStyle:
-                    const TextStyle(fontSize: 15),
+                    textStyle: const TextStyle(fontSize: 15),
                   ),
                 ),
                 Text(

@@ -2,6 +2,7 @@ import 'package:camwonders/auth_pages/debut_inscription.dart';
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
 import 'package:geocoding/geocoding.dart';
@@ -37,7 +38,7 @@ class _MenuState extends State<Menu> {
   Utilisateur? _user;
   bool _isLoading = true;
   String? _error;
-  String _city = "...";
+  String _city = "CAMEROUN";
 
 
   @override
@@ -46,7 +47,12 @@ class _MenuState extends State<Menu> {
     _pageController = PageController(initialPage: _currentPageIndex);
     loadData();
     _fetchUserInfo();
-    _getUserCity();
+    loadNotifications();
+
+  }
+
+  void loadNotifications() async {
+
   }
 
   Future<void> _fetchUserInfo() async {

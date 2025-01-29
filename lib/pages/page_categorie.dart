@@ -20,7 +20,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-
 class page_categorie extends StatefulWidget {
   final Categorie cat;
   const page_categorie({super.key, required this.cat});
@@ -38,16 +37,20 @@ class _page_categorieState extends State<page_categorie> {
   void initState() {
     super.initState();
     _verifyConnection();
-    setState(() {
-    });
-    listewonderscat = FirebaseFirestore.instance.collection('wonders').where('categorie', isEqualTo: widget.cat.categoryName).snapshots();
+    setState(() {});
+    listewonderscat = FirebaseFirestore.instance
+        .collection('wonders')
+        .where('categorie', isEqualTo: widget.cat.categoryName)
+        .snapshots();
   }
 
   void _verifyConnection() async {
-    if(await Logique.checkInternetConnection()){
-      
-    }else{
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Connectez-vous a internet"), backgroundColor: Colors.red,));
+    if (await Logique.checkInternetConnection()) {
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Connectez-vous a internet"),
+        backgroundColor: Colors.red,
+      ));
     }
   }
 
@@ -66,24 +69,28 @@ class _page_categorieState extends State<page_categorie> {
       const Wondershort(),
       const page_favoris(),
       const Profil(),
-      wondersBody(size: size, listewonderscat: listewonderscat, cat: widget.cat,),
+      wondersBody(
+        size: size,
+        listewonderscat: listewonderscat,
+        cat: widget.cat,
+      ),
     ];
     return Scaffold(
         body: pages[_selectedItem],
         bottomNavigationBar: Container(
           padding: const EdgeInsets.only(bottom: 7, top: 7),
           decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.light ? Colors.white : const Color(0xff323232),
+              color: Theme.of(context).brightness == Brightness.light
+                  ? Colors.white
+                  : const Color(0xff323232),
               boxShadow: [
                 BoxShadow(
-                    color: Theme.of(context).brightness == Brightness.light ? Colors.grey : const Color(0xff323232),
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? Colors.grey
+                        : const Color(0xff323232),
                     offset: const Offset(0, 3),
-                    blurRadius: 4
-
-                )
-              ]
-          ),
-
+                    blurRadius: 4)
+              ]),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -94,17 +101,37 @@ class _page_categorieState extends State<page_categorie> {
                       height: 35,
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.linear,
-                      decoration: _selectedItem == 0 ? BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Theme.of(context).brightness == Brightness.light ? Colors.grey.withOpacity(0.3) : const Color.fromARGB(255, 56, 56, 56),
-                      ) : null,
-                      child: IconButton(onPressed: () => _changePage(0), icon: Icon(LucideIcons.layoutGrid, size: 20, color: _selectedItem == 0 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
-                  ),
-
-                  Text("Accueil", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 0 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                      decoration: _selectedItem == 0
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? Colors.grey.withOpacity(0.3)
+                                  : const Color.fromARGB(255, 56, 56, 56),
+                            )
+                          : null,
+                      child: IconButton(
+                        onPressed: () => _changePage(0),
+                        icon: Icon(
+                          LucideIcons.layoutGrid,
+                          size: 20,
+                          color: _selectedItem == 0
+                              ? verte
+                              : Theme.of(context).brightness == Brightness.light
+                                  ? Colors.grey
+                                  : Colors.white,
+                        ),
+                      )),
+                  Text(
+                    "Accueil",
+                    style: GoogleFonts.jura(
+                        textStyle: TextStyle(
+                            fontSize: 10,
+                            color: _selectedItem == 0 ? verte : Colors.grey,
+                            fontWeight: FontWeight.bold)),
+                  )
                 ],
               ),
-
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -112,17 +139,37 @@ class _page_categorieState extends State<page_categorie> {
                       height: 35,
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.linear,
-                      decoration: _selectedItem == 1 ? BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Theme.of(context).brightness == Brightness.light ? Colors.grey.withOpacity(0.3) : const Color.fromARGB(255, 56, 56, 56),
-                      ) : null,
-                      child: IconButton(onPressed: () => _changePage(1), icon: Icon(LucideIcons.calendarClock, size: 20, color: _selectedItem == 1 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
-                  ),
-
-                  Text("Reservations", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 1 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                      decoration: _selectedItem == 1
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? Colors.grey.withOpacity(0.3)
+                                  : const Color.fromARGB(255, 56, 56, 56),
+                            )
+                          : null,
+                      child: IconButton(
+                        onPressed: () => _changePage(1),
+                        icon: Icon(
+                          LucideIcons.calendarClock,
+                          size: 20,
+                          color: _selectedItem == 1
+                              ? verte
+                              : Theme.of(context).brightness == Brightness.light
+                                  ? Colors.grey
+                                  : Colors.white,
+                        ),
+                      )),
+                  Text(
+                    "Reservations",
+                    style: GoogleFonts.jura(
+                        textStyle: TextStyle(
+                            fontSize: 10,
+                            color: _selectedItem == 1 ? verte : Colors.grey,
+                            fontWeight: FontWeight.bold)),
+                  )
                 ],
               ),
-
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -130,17 +177,37 @@ class _page_categorieState extends State<page_categorie> {
                       height: 35,
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.linear,
-                      decoration: _selectedItem == 2 ? BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Theme.of(context).brightness == Brightness.light ? Colors.grey.withOpacity(0.3) : const Color.fromARGB(255, 56, 56, 56),
-                      ) : null,
-                      child: IconButton(onPressed: () => _changePage(2), icon: Icon(LucideIcons.listVideo, size: 30, color: _selectedItem == 2 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
-                  ),
-
-                  Text("Videos", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 2 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                      decoration: _selectedItem == 2
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? Colors.grey.withOpacity(0.3)
+                                  : const Color.fromARGB(255, 56, 56, 56),
+                            )
+                          : null,
+                      child: IconButton(
+                        onPressed: () => _changePage(2),
+                        icon: Icon(
+                          LucideIcons.listVideo,
+                          size: 30,
+                          color: _selectedItem == 2
+                              ? verte
+                              : Theme.of(context).brightness == Brightness.light
+                                  ? Colors.grey
+                                  : Colors.white,
+                        ),
+                      )),
+                  Text(
+                    "Videos",
+                    style: GoogleFonts.jura(
+                        textStyle: TextStyle(
+                            fontSize: 10,
+                            color: _selectedItem == 2 ? verte : Colors.grey,
+                            fontWeight: FontWeight.bold)),
+                  )
                 ],
               ),
-
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -148,17 +215,37 @@ class _page_categorieState extends State<page_categorie> {
                       height: 35,
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.linear,
-                      decoration: _selectedItem == 3 ? BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Theme.of(context).brightness == Brightness.light ? Colors.grey.withOpacity(0.3) : const Color.fromARGB(255, 56, 56, 56),
-                      ) : null,
-                      child: IconButton(onPressed: () => _changePage(3), icon: Icon(LucideIcons.heart, size: 20, color: _selectedItem == 3 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
-                  ),
-
-                  Text("Favoris", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 3 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                      decoration: _selectedItem == 3
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? Colors.grey.withOpacity(0.3)
+                                  : const Color.fromARGB(255, 56, 56, 56),
+                            )
+                          : null,
+                      child: IconButton(
+                        onPressed: () => _changePage(3),
+                        icon: Icon(
+                          LucideIcons.heart,
+                          size: 20,
+                          color: _selectedItem == 3
+                              ? verte
+                              : Theme.of(context).brightness == Brightness.light
+                                  ? Colors.grey
+                                  : Colors.white,
+                        ),
+                      )),
+                  Text(
+                    "Favoris",
+                    style: GoogleFonts.jura(
+                        textStyle: TextStyle(
+                            fontSize: 10,
+                            color: _selectedItem == 3 ? verte : Colors.grey,
+                            fontWeight: FontWeight.bold)),
+                  )
                 ],
               ),
-
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -166,20 +253,40 @@ class _page_categorieState extends State<page_categorie> {
                       height: 35,
                       duration: const Duration(milliseconds: 800),
                       curve: Curves.linear,
-                      decoration: _selectedItem == 4 ? BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Theme.of(context).brightness == Brightness.light ? Colors.grey.withOpacity(0.3) : const Color.fromARGB(255, 56, 56, 56),
-                      ) : null,
-                      child: IconButton(onPressed: () => _changePage(4), icon: Icon(LucideIcons.user, size: 20, color: _selectedItem == 4 ? verte : Theme.of(context).brightness == Brightness.light ? Colors.grey : Colors.white,),)
-                  ),
-
-                  Text("Profil", style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, color: _selectedItem == 4 ? verte : Colors.grey, fontWeight: FontWeight.bold)),)
+                      decoration: _selectedItem == 4
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              color: Theme.of(context).brightness ==
+                                      Brightness.light
+                                  ? Colors.grey.withOpacity(0.3)
+                                  : const Color.fromARGB(255, 56, 56, 56),
+                            )
+                          : null,
+                      child: IconButton(
+                        onPressed: () => _changePage(4),
+                        icon: Icon(
+                          LucideIcons.user,
+                          size: 20,
+                          color: _selectedItem == 4
+                              ? verte
+                              : Theme.of(context).brightness == Brightness.light
+                                  ? Colors.grey
+                                  : Colors.white,
+                        ),
+                      )),
+                  Text(
+                    "Profil",
+                    style: GoogleFonts.jura(
+                        textStyle: TextStyle(
+                            fontSize: 10,
+                            color: _selectedItem == 4 ? verte : Colors.grey,
+                            fontWeight: FontWeight.bold)),
+                  )
                 ],
               )
             ],
           ),
-        )
-    );
+        ));
   }
 }
 
@@ -187,7 +294,8 @@ class wondersBody extends StatefulWidget {
   wondersBody({
     super.key,
     required this.size,
-    required this.listewonderscat, required this.cat,
+    required this.listewonderscat,
+    required this.cat,
   });
 
   final Size size;
@@ -231,9 +339,11 @@ class _wondersBodyState extends State<wondersBody> {
   Future<void> _handleRefresh() async {
     await Future.delayed(const Duration(milliseconds: 600));
     setState(() {});
-    widget.listewonderscat = FirebaseFirestore.instance.collection('wonders').where('categorie', isEqualTo: widget.cat.categoryName).snapshots();
+    widget.listewonderscat = FirebaseFirestore.instance
+        .collection('wonders')
+        .where('categorie', isEqualTo: widget.cat.categoryName)
+        .snapshots();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -241,8 +351,7 @@ class _wondersBodyState extends State<wondersBody> {
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0.0,
-        title: Center(
-            child: Text(widget.cat.categoryName)),
+        title: Center(child: Text(widget.cat.categoryName)),
         actions: [
           AuthService().currentUser == null
               ? Container(
@@ -251,7 +360,8 @@ class _wondersBodyState extends State<wondersBody> {
                     Navigator.pushReplacement(
                         context,
                         PageRouteBuilder(
-                            pageBuilder: (_, __, ___) => const Debut_Inscription(),
+                            pageBuilder: (_, __, ___) =>
+                                const Debut_Inscription(),
                             transitionsBuilder: (_, animation, __, child) {
                               return SlideTransition(
                                 position: Tween<Offset>(
@@ -278,8 +388,8 @@ class _wondersBodyState extends State<wondersBody> {
                         Text(
                           "Se connecter",
                           style: GoogleFonts.jura(
-                              textStyle:
-                                  const TextStyle(fontSize: 10, color: Colors.white)),
+                              textStyle: const TextStyle(
+                                  fontSize: 10, color: Colors.white)),
                         ),
                         const Icon(
                           LucideIcons.userPlus,
@@ -330,17 +440,20 @@ class _wondersBodyState extends State<wondersBody> {
                         });
                   },
                 ),
-
-
-                notifications.length > 0 ? Container(
-                margin: const EdgeInsets.only(bottom: 15, right: 5),
-                padding: const EdgeInsets.fromLTRB(6, 1, 6, 1),
-                decoration: BoxDecoration(
-                  color: Colors.personnalgreen,
-                  borderRadius: BorderRadius.circular(10)
-                ),
-                child: Text(notifications.length.toString(), style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 12, color: Colors.white)),))
-                : const SizedBox()
+                notifications.length > 0
+                    ? Container(
+                        margin: const EdgeInsets.only(bottom: 15, right: 5),
+                        padding: const EdgeInsets.fromLTRB(6, 1, 6, 1),
+                        decoration: BoxDecoration(
+                            color: Color(0xff226900),
+                            borderRadius: BorderRadius.circular(10)),
+                        child: Text(
+                          notifications.length.toString(),
+                          style: GoogleFonts.lalezar(
+                              textStyle: const TextStyle(
+                                  fontSize: 12, color: Colors.white)),
+                        ))
+                    : const SizedBox()
               ],
             ),
           ),
@@ -379,7 +492,8 @@ class _wondersBodyState extends State<wondersBody> {
                                 fontSize: 14, fontWeight: FontWeight.bold)),
                         onChanged: (value) {
                           setState(() {
-                            widget.listewonderscat = widget.cat.getWondersBySearch(value);
+                            widget.listewonderscat =
+                                widget.cat.getWondersBySearch(value);
                           });
                         },
                       ),
@@ -389,7 +503,10 @@ class _wondersBodyState extends State<wondersBody> {
                         showDialog(
                           context: context,
                           builder: (BuildContext context) {
-                            return FilterDialog(cat: widget.cat, listewonderscat: widget.listewonderscat,);
+                            return FilterDialog(
+                              cat: widget.cat,
+                              listewonderscat: widget.listewonderscat,
+                            );
                           },
                         );
                       },
@@ -425,116 +542,119 @@ class _wondersBodyState extends State<wondersBody> {
             ),
           ),
           Expanded(
-            child: widget.listewonderscat.length != 0 ?
-             LiquidPullToRefresh(
-              onRefresh: _handleRefresh,
-              color: _page_categorieState.verte,
-              backgroundColor: Colors.white,
-              height: 50,
-              showChildOpacityTransition: false,
-              springAnimationDurationInMilliseconds: 700,
-              child: StreamBuilder<QuerySnapshot>(
-                stream: widget.listewonderscat,
-                builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
-                  if (snapshot.hasError) {
-                    return Text('Something went wrong');
-                  }
+              child: widget.listewonderscat.length != 0
+                  ? LiquidPullToRefresh(
+                      onRefresh: _handleRefresh,
+                      color: _page_categorieState.verte,
+                      backgroundColor: Colors.white,
+                      height: 50,
+                      showChildOpacityTransition: false,
+                      springAnimationDurationInMilliseconds: 700,
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: widget.listewonderscat,
+                        builder: (BuildContext context,
+                            AsyncSnapshot<QuerySnapshot> snapshot) {
+                          if (snapshot.hasError) {
+                            return Text('Something went wrong');
+                          }
 
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          shimmerWonder(width: size.width),
-                          shimmerWonder(width: size.width),
-                        ],
-                      ),
-                    );
-                  }
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  shimmerWonder(width: size.width),
+                                  shimmerWonder(width: size.width),
+                                ],
+                              ),
+                            );
+                          }
 
-                  if (snapshot.data!.docs.isEmpty){
-                    return Center(child:
-                      Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            height: size.height/10,
-                            margin: EdgeInsets.all(10),
-                            child: Theme.of(context).brightness == Brightness.light ? Image.asset('assets/vide_light.png') : Image.asset('assets/vide_dark.png'),
-                          ),
-                          Text("Vide, aucun element !")
-                        ],
-                      ));
-                  }
+                          if (snapshot.data!.docs.isEmpty) {
+                            return Center(
+                                child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  height: size.height / 10,
+                                  margin: EdgeInsets.all(10),
+                                  child: Theme.of(context).brightness ==
+                                          Brightness.light
+                                      ? Image.asset('assets/vide_light.png')
+                                      : Image.asset('assets/vide_dark.png'),
+                                ),
+                                Text("Vide, aucun element !")
+                              ],
+                            ));
+                          }
 
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: snapshot.data!.docs.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      DocumentSnapshot document = snapshot.data!.docs[index];
-                      Wonder wond = Wonder(
-                        idWonder: document.id,
-                        wonderName: document['wonderName'],
-                        description: document['description'],
-                        imagePath: document['imagePath'],
-                        city: document['city'],
-                        region: document['region'],
-                        free: document['free'],
-                        price: document['price'],
-                        horaire: document['horaire'],
-                        latitude: document['latitude'],
-                        longitude: document['longitude'],
-                        note: (document['note'] as num).toDouble(),
-                        categorie: document['categorie'],
-                        isreservable: document['isreservable']
-                      );
-                      return GestureDetector(
-                        onTap: () => Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                              pageBuilder: (context, animation,
-                                      secondaryAnimation) =>
-                                  wonder_page(
-                                      wond: wond),
-                              transitionDuration:
-                                  const Duration(milliseconds: 500),
-                              transitionsBuilder: (context, animation,
-                                  secondaryAnimation, child) {
-                                animation = CurvedAnimation(
-                                    parent: animation, curve: Curves.easeIn);
-                                return FadeTransition(
-                                  opacity: animation,
-                                  child: child,
+                          return ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: snapshot.data!.docs.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                DocumentSnapshot document =
+                                    snapshot.data!.docs[index];
+                                Wonder wond = Wonder(
+                                    idWonder: document.id,
+                                    wonderName: document['wonderName'],
+                                    description: document['description'],
+                                    imagePath: document['imagePath'],
+                                    city: document['city'],
+                                    region: document['region'],
+                                    free: document['free'],
+                                    price: document['price'],
+                                    horaire: document['horaire'],
+                                    latitude: document['latitude'],
+                                    longitude: document['longitude'],
+                                    note: (document['note'] as num).toDouble(),
+                                    categorie: document['categorie'],
+                                    isreservable: document['isreservable']);
+                                return GestureDetector(
+                                  onTap: () => Navigator.push(
+                                    context,
+                                    PageRouteBuilder(
+                                        pageBuilder: (context, animation,
+                                                secondaryAnimation) =>
+                                            wonder_page(wond: wond),
+                                        transitionDuration:
+                                            const Duration(milliseconds: 500),
+                                        transitionsBuilder: (context, animation,
+                                            secondaryAnimation, child) {
+                                          animation = CurvedAnimation(
+                                              parent: animation,
+                                              curve: Curves.easeIn);
+                                          return FadeTransition(
+                                            opacity: animation,
+                                            child: child,
+                                          );
+                                        }),
+                                  ),
+                                  child: isLoading
+                                      ? shimmerWonder(
+                                          width: size.width,
+                                        )
+                                      : wonderWidget(
+                                          size: size, wonderscat: wond),
                                 );
-                              }),
+                              });
+                        },
+                      ),
+                    )
+                  : Center(
+                      child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          height: size.height / 10,
+                          margin: EdgeInsets.all(10),
+                          child:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? Image.asset('assets/vide_light.png')
+                                  : Image.asset('assets/vide_dark.png'),
                         ),
-                        child: isLoading
-                            ? shimmerWonder(
-                                width: size.width,
-                              )
-                            : wonderWidget(
-                                size: size,
-                                wonderscat: wond),
-                      );
-                    });
-                },
-              ),
-            )
-            
-            :
-            Center(child:
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    height: size.height/10,
-                    margin: EdgeInsets.all(10),
-                    child: Theme.of(context).brightness == Brightness.light ? Image.asset('assets/vide_light.png') : Image.asset('assets/vide_dark.png'),
-                  ),
-                  Text("Vide pour le moment, bientot disponible !")
-                ],
-              ))
-          )
+                        Text("Vide pour le moment, bientot disponible !")
+                      ],
+                    )))
         ],
       ),
     );
@@ -548,7 +668,6 @@ class wonderWidget extends StatefulWidget {
     required this.wonderscat,
   });
 
-
   final Size size;
   final Wonder wonderscat;
 
@@ -557,7 +676,8 @@ class wonderWidget extends StatefulWidget {
 }
 
 // ignore: camel_case_types
-class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderStateMixin {
+class _wonderWidgetState extends State<wonderWidget>
+    with SingleTickerProviderStateMixin {
   bool is_like = false;
   late Box<Wonder> favorisBox;
   late AnimationController _controller;
@@ -636,8 +756,11 @@ class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderSt
                         child: CachedNetworkImage(
                           cacheManager: CustomCacheManager(),
                           imageUrl: widget.wonderscat.imagePath,
-                          placeholder: (context, url) => Center(child: shimmerOffre(width: widget.size.width, height: 250)),
-                          errorWidget: (context, url, error) => Center(child: Icon(Icons.error)),
+                          placeholder: (context, url) => Center(
+                              child: shimmerOffre(
+                                  width: widget.size.width, height: 250)),
+                          errorWidget: (context, url, error) =>
+                              Center(child: Icon(Icons.error)),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -675,7 +798,8 @@ class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderSt
                                             child: Text(
                                                 "Element Ajouté aux Favoris !")),
                                       ),
-                                      duration: const Duration(milliseconds: 900),
+                                      duration:
+                                          const Duration(milliseconds: 900),
                                       behavior: SnackBarBehavior.floating,
                                       backgroundColor: Colors.transparent,
                                       elevation: 0,
@@ -683,49 +807,66 @@ class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderSt
                                   }
                                 });
                               } else {
-                                showDialog(context: context,
-                                  builder: (BuildContext context){
-                                    return AlertDialog(
-                                      title: Container(
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.end,
+                                showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: Container(
+                                            child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
                                           children: [
                                             TextButton(
-                                              onPressed: () => Navigator.of(context).pop(),
-                                              child: const Text("Ignorer", style: TextStyle(decoration: TextDecoration.underline)),
+                                              onPressed: () =>
+                                                  Navigator.of(context).pop(),
+                                              child: const Text("Ignorer",
+                                                  style: TextStyle(
+                                                      decoration: TextDecoration
+                                                          .underline)),
                                             )
                                           ],
-                                        )
-                                      ),
-                                      content: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            //width: 20,
-                                            height: 100,
-                                            child: Image.asset('assets/logo.png')
-                                          ),
-                                          Text("Connectez vous pour acceder a tout les foncionnalités", style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 25)),),
-                                          Text("Connectez vous ou inscrivez vous pour acceder a toutes les fonctionnalites de l'application et pour garder une trace de tout vos activites et vos abonnements.", style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 10)),)
+                                        )),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                                //width: 20,
+                                                height: 100,
+                                                child: Image.asset(
+                                                    'assets/logo.png')),
+                                            Text(
+                                              "Connectez vous pour acceder a tout les foncionnalités",
+                                              style: GoogleFonts.lalezar(
+                                                  textStyle: const TextStyle(
+                                                      fontSize: 25)),
+                                            ),
+                                            Text(
+                                              "Connectez vous ou inscrivez vous pour acceder a toutes les fonctionnalites de l'application et pour garder une trace de tout vos activites et vos abonnements.",
+                                              style: GoogleFonts.jura(
+                                                  textStyle: const TextStyle(
+                                                      fontSize: 10)),
+                                            )
+                                          ],
+                                        ),
+                                        actions: [
+                                          ElevatedButton(
+                                              style: ElevatedButton.styleFrom(),
+                                              onPressed: () => Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          const Debut_Inscription())),
+                                              child: const Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(LucideIcons.userPlus),
+                                                  Text("Me connecter")
+                                                ],
+                                              ))
                                         ],
-                                      ),
-                                      actions: [
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                          ),
-                                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const Debut_Inscription())),
-                                          child: const Row(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(LucideIcons.userPlus),
-                                              Text("Me connecter")
-                                            ],
-                                          )
-                                        )
-                                      ],
-                                    );
-                                  }
-                                );
+                                      );
+                                    });
                               }
 
                               _controller.forward();
@@ -776,18 +917,16 @@ class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderSt
                           Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: const Color.fromARGB(255, 8, 71, 122),
-                              borderRadius: BorderRadius.circular(3)
+                                color: const Color.fromARGB(255, 8, 71, 122),
+                                borderRadius: BorderRadius.circular(3)),
+                            child: Text(
+                              widget.wonderscat.city,
+                              style: const TextStyle(color: Colors.white),
                             ),
-                            child: Text(widget.wonderscat.city, style: const TextStyle(color: Colors.white),),
                           ),
-
                           const Icon(LucideIcons.dot),
-
                           Text("Région du : ${widget.wonderscat.region}"),
-
                           const Icon(LucideIcons.dot),
-
                           const Text("24km"),
                         ],
                       ),
@@ -799,7 +938,7 @@ class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderSt
                               Row(
                                 children: List.generate(
                                   widget.wonderscat.note.floor(),
-                                      (index) => const Icon(
+                                  (index) => const Icon(
                                     Icons.star_rounded,
                                     color: Colors.orange,
                                     size: 15,
@@ -807,47 +946,60 @@ class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderSt
                                 ),
                               ),
                               // Demi-étoile si nécessaire
-                              if (widget.wonderscat.note - widget.wonderscat.note.floor() !=
-                                  1 &&
-                                  widget.wonderscat.note - widget.wonderscat.note.floor() != 0)
+                              if (widget.wonderscat.note -
+                                          widget.wonderscat.note.floor() !=
+                                      1 &&
+                                  widget.wonderscat.note -
+                                          widget.wonderscat.note.floor() !=
+                                      0)
                                 const Icon(
                                   Icons.star_half_rounded,
                                   color: Colors.orange,
                                   size: 15,
                                 ),
                               // Étoiles vides
-                              if(widget.wonderscat.note.floor() != 5 &&
-                                  widget.wonderscat.note - widget.wonderscat.note.floor() == 0)
+                              if (widget.wonderscat.note.floor() != 5 &&
+                                  widget.wonderscat.note -
+                                          widget.wonderscat.note.floor() ==
+                                      0)
                                 Row(
                                   children: List.generate(
                                     5 - widget.wonderscat.note.floor(),
-                                        (index) => const Icon(
+                                    (index) => const Icon(
                                       Icons.star_border_rounded,
                                       color: Colors.orange,
                                       size: 15,
                                     ),
                                   ),
                                 ),
-                              if(widget.wonderscat.note.floor() != 5 && widget.wonderscat.note - widget.wonderscat.note.floor() !=
-                                  1 &&
-                                  widget.wonderscat.note - widget.wonderscat.note.floor() != 0)
+                              if (widget.wonderscat.note.floor() != 5 &&
+                                  widget.wonderscat.note -
+                                          widget.wonderscat.note.floor() !=
+                                      1 &&
+                                  widget.wonderscat.note -
+                                          widget.wonderscat.note.floor() !=
+                                      0)
                                 Row(
                                   children: List.generate(
                                     4 - widget.wonderscat.note.floor(),
-                                        (index) => const Icon(
+                                    (index) => const Icon(
                                       Icons.star_border_rounded,
                                       color: Colors.orange,
                                       size: 15,
                                     ),
                                   ),
                                 ),
-                              if(widget.wonderscat.note.floor() == 5 && widget.wonderscat.note - widget.wonderscat.note.floor() !=
-                                  1 &&
-                                  widget.wonderscat.note - widget.wonderscat.note.floor() != 0)
+                              if (widget.wonderscat.note.floor() == 5 &&
+                                  widget.wonderscat.note -
+                                          widget.wonderscat.note.floor() !=
+                                      1 &&
+                                  widget.wonderscat.note -
+                                          widget.wonderscat.note.floor() !=
+                                      0)
                                 Row(
                                   children: List.generate(
                                     4 - widget.wonderscat.note.floor(),
-                                        (index) => const Icon(
+                                    (index) => const Icon(
                                       Icons.star_border_rounded,
                                       color: Colors.orange,
                                       size: 15,
@@ -862,12 +1014,18 @@ class _wonderWidgetState extends State<wonderWidget> with SingleTickerProviderSt
                             height: 20,
                             color: const Color(0xff226900),
                           ),
-                          Text(widget.wonderscat.note.toStringAsFixed(1), style: const TextStyle(fontWeight: FontWeight.bold),)
+                          Text(
+                            widget.wonderscat.note.toStringAsFixed(1),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          )
                         ],
                       ),
-
                       Text(
-                          "Personnes qui aiment ce lieu : ${widget.wonderscat.note}", style: const TextStyle(color: Color(0xff226900), fontWeight: FontWeight.bold),)
+                        "Personnes qui aiment ce lieu : ${widget.wonderscat.note}",
+                        style: const TextStyle(
+                            color: Color(0xff226900),
+                            fontWeight: FontWeight.bold),
+                      )
                     ],
                   ),
                 ],
@@ -951,7 +1109,8 @@ class _FilterDialogState extends State<FilterDialog> {
         ElevatedButton(
           onPressed: () {
             setState(() {
-              widget.listewonderscat = widget.cat.getWondersByFilters(_showPaidItems, _selectedRegion);
+              widget.listewonderscat = widget.cat
+                  .getWondersByFilters(_showPaidItems, _selectedRegion);
             });
             Navigator.of(context).pop();
           },
