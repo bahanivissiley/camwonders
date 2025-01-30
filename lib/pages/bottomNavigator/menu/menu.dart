@@ -1,13 +1,19 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camwonders/auth_pages/debut_inscription.dart';
+import 'package:camwonders/class/Notification.dart';
 import 'package:camwonders/class/Utilisateur.dart';
+import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/adapters.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -24,12 +30,7 @@ class _MenuState extends State<Menu> {
     ListeVue(),
     const MapVue(),
   ];
-  final List<String> notifications = [
-    'Titre Notification 1',
-    'Titre Notification 2',
-    'Titre Notification 3',
-    // Ajoutez d'autres notifications selon vos besoins
-  ];
+
   static const verte = Color(0xff226900);
   late PageController _pageController;
 
@@ -40,10 +41,12 @@ class _MenuState extends State<Menu> {
   String? _error;
   String _city = "CAMEROUN";
 
+  late Box<NotificationItem> notificationBox;
 
   @override
   void initState() {
     super.initState();
+    notificationBox = Hive.box<NotificationItem>('notificationItems');
     _pageController = PageController(initialPage: _currentPageIndex);
     loadData();
     _fetchUserInfo();
@@ -237,51 +240,157 @@ class _MenuState extends State<Menu> {
           child: Stack(
             alignment: Alignment.centerRight,
             children: [
-              PopupMenuButton<String>(
-                icon: const Icon(LucideIcons.bell),
-                itemBuilder: (BuildContext context) {
-                  return notifications.map((String notification) {
-                    return PopupMenuItem<String>(
-                      value: notification,
-                      child: Text(notification),
-                    );
-                  }).toList();
-                },
-                onSelected: (String notification) {
-                  // Traitez la notification sélectionnée ici
-                  showDialog(context: context, builder: (BuildContext context){
-                    return AlertDialog(
-                      title: Text(notification),
-                      content: const Text("Contenu de la notification"),
-                      actions: [
-                        TextButton(
-                          onPressed: (){
-                          Navigator.pop(context);
-                          }, child: const Text("Marquer comme lu")
+
+          PopupMenuButton<String>(
+          icon: const Icon(LucideIcons.bell),
+            itemBuilder: (BuildContext context) {
+              final Box<NotificationItem> box = notificationBox;
+
+              if (box.values.isEmpty) {
+                return [
+                  PopupMenuItem<String>(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height / 10,
+                            child: Theme.of(context).brightness == Brightness.light
+                                ? Image.asset('assets/vide_light.png')
+                                : Image.asset('assets/vide_dark.png'),
+                          ),
+                          const Text("Pas de notifications"),
+                        ],
+                      ),
+                    ),
+                  ),
+                ];
+              }
+
+              // Trier les notifications par date décroissante
+              final sortedNotifications = box.values.toList()
+                ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+              return sortedNotifications.map<PopupMenuItem<String>>((NotificationItem notification) {
+                return PopupMenuItem<String>(
+                  value: notification.title,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      children: [
+                        // Image container
+                        Container(
+                          height: MediaQuery.of(context).size.width / 8,
+                          width: MediaQuery.of(context).size.width / 8,
+                          margin: const EdgeInsets.only(right: 12.0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(11.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4.0,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(11.0),
+                            child: CachedNetworkImage(
+                              cacheManager: CustomCacheManager(),
+                              imageUrl: notification.image,
+                              placeholder: (context, url) => Center(
+                                child: shimmerOffre(
+                                  width: MediaQuery.of(context).size.width / 6,
+                                  height: MediaQuery.of(context).size.width / 6,
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => const Center(
+                                child: Icon(Icons.error, color: Colors.red),
+                              ),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         ),
-              
-                        TextButton(
-                          onPressed: (){
-                          Navigator.pop(context);
-                          }, child: const Text("Retour")
+
+                        // Text content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                notification.title,
+                                style: TextStyle(
+                                  fontSize: 16.0,
+                                  fontWeight: notification.read ? FontWeight.normal : FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4.0),
+                              Text(
+                                notification.message,
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  fontWeight: notification.read ? FontWeight.normal : FontWeight.bold,
+                                  color: Colors.black54,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    );
-                  }
-                  
+                    ),
+                  ),
+                );
+              }).toList();
+            },
+            onSelected: (String notificationTitle) {
+              final Box<NotificationItem> box = notificationBox;
+              final NotificationItem notification = box.values.firstWhere(
+                    (item) => item.title == notificationTitle,
+              );
+
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    title: Text(notification.title),
+                    content: Text(notification.message),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          // Marquer comme lu
+                          notification.read = true;
+                          box.put(notification.title, notification);
+                          setState(() {}); // Rafraîchir l'interface
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Marquer comme lu"),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Text("Retour"),
+                      ),
+                    ],
                   );
                 },
-              ),
+              );
+            },
+          ),
 
 
-              notifications.length > 0 ? Container(
+              notificationBox.length > 0 ? Container(
                 margin: const EdgeInsets.only(bottom: 15, right: 5),
                 padding: EdgeInsets.fromLTRB(6, 1, 6, 1),
                 decoration: BoxDecoration(
                   color: verte,
                   borderRadius: BorderRadius.circular(10)
                 ),
-                child: Text(notifications.length.toString(), style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 12, color: Colors.white)),))
+                child: Text(notificationBox.length.toString(), style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 12, color: Colors.white)),))
                 : SizedBox()
             ],
           ),
@@ -301,29 +410,11 @@ class _MenuState extends State<Menu> {
   Column menu(double width) {
     return Column(
           children: [
-            //Text("Home", style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),),
-            Container(
-              width: width*7/8,
-              padding: const EdgeInsets.only(left: 20),
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20)
-              ),
-              child: TextField(
-                decoration: const InputDecoration(
-                  icon: Icon(LucideIcons.search, size: 20,),
-                  hintText: "Rechercher",
-                  border: InputBorder.none
-                ),
-
-                style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-              ),
-            ),
-        
         
             Container(
               padding: const EdgeInsets.only(top: 20, bottom: 5),
               //height: height/10,
+
               width: width,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

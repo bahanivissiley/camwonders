@@ -11,8 +11,10 @@ import 'package:camwonders/pages/bottomNavigator/profil.dart';
 import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/pages/bottomNavigator/wondershort.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
+import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -47,7 +49,7 @@ class _page_categorieState extends State<page_categorie> {
   void _verifyConnection() async {
     if (await Logique.checkInternetConnection()) {
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text("Connectez-vous a internet"),
         backgroundColor: Colors.red,
       ));
@@ -62,7 +64,7 @@ class _page_categorieState extends State<page_categorie> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
     final List<Widget> pages = [
       const Menu(),
       const reservations(),
@@ -100,7 +102,6 @@ class _page_categorieState extends State<page_categorie> {
                   AnimatedContainer(
                       height: 35,
                       duration: const Duration(milliseconds: 800),
-                      curve: Curves.linear,
                       decoration: _selectedItem == 0
                           ? BoxDecoration(
                               borderRadius: BorderRadius.circular(5),
@@ -138,7 +139,6 @@ class _page_categorieState extends State<page_categorie> {
                   AnimatedContainer(
                       height: 35,
                       duration: const Duration(milliseconds: 800),
-                      curve: Curves.linear,
                       decoration: _selectedItem == 1
                           ? BoxDecoration(
                               borderRadius: BorderRadius.circular(5),
@@ -176,7 +176,6 @@ class _page_categorieState extends State<page_categorie> {
                   AnimatedContainer(
                       height: 35,
                       duration: const Duration(milliseconds: 800),
-                      curve: Curves.linear,
                       decoration: _selectedItem == 2
                           ? BoxDecoration(
                               borderRadius: BorderRadius.circular(5),
@@ -214,7 +213,6 @@ class _page_categorieState extends State<page_categorie> {
                   AnimatedContainer(
                       height: 35,
                       duration: const Duration(milliseconds: 800),
-                      curve: Curves.linear,
                       decoration: _selectedItem == 3
                           ? BoxDecoration(
                               borderRadius: BorderRadius.circular(5),
@@ -252,7 +250,6 @@ class _page_categorieState extends State<page_categorie> {
                   AnimatedContainer(
                       height: 35,
                       duration: const Duration(milliseconds: 800),
-                      curve: Curves.linear,
                       decoration: _selectedItem == 4
                           ? BoxDecoration(
                               borderRadius: BorderRadius.circular(5),
@@ -347,7 +344,8 @@ class _wondersBodyState extends State<wondersBody> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
+    final wondersProvider = Provider.of<WondersProvider>(context);
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0.0,
@@ -440,12 +438,12 @@ class _wondersBodyState extends State<wondersBody> {
                         });
                   },
                 ),
-                notifications.length > 0
+                notifications.isNotEmpty
                     ? Container(
                         margin: const EdgeInsets.only(bottom: 15, right: 5),
                         padding: const EdgeInsets.fromLTRB(6, 1, 6, 1),
                         decoration: BoxDecoration(
-                            color: Color(0xff226900),
+                            color: const Color(0xff226900),
                             borderRadius: BorderRadius.circular(10)),
                         child: Text(
                           notifications.length.toString(),
@@ -491,10 +489,7 @@ class _wondersBodyState extends State<wondersBody> {
                             textStyle: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.bold)),
                         onChanged: (value) {
-                          setState(() {
-                            widget.listewonderscat =
-                                widget.cat.getWondersBySearch(value);
-                          });
+                          context.read<WondersProvider>().setSearchQuery(value.toLowerCase());
                         },
                       ),
                     ),
@@ -551,11 +546,11 @@ class _wondersBodyState extends State<wondersBody> {
                       showChildOpacityTransition: false,
                       springAnimationDurationInMilliseconds: 700,
                       child: StreamBuilder<QuerySnapshot>(
-                        stream: widget.listewonderscat,
+                        stream: wondersProvider.wondersStream,
                         builder: (BuildContext context,
                             AsyncSnapshot<QuerySnapshot> snapshot) {
                           if (snapshot.hasError) {
-                            return Text('Something went wrong');
+                            return const Text('Something went wrong');
                           }
 
                           if (snapshot.connectionState ==
@@ -577,13 +572,13 @@ class _wondersBodyState extends State<wondersBody> {
                               children: [
                                 Container(
                                   height: size.height / 10,
-                                  margin: EdgeInsets.all(10),
+                                  margin: const EdgeInsets.all(10),
                                   child: Theme.of(context).brightness ==
                                           Brightness.light
                                       ? Image.asset('assets/vide_light.png')
                                       : Image.asset('assets/vide_dark.png'),
                                 ),
-                                Text("Vide, aucun element !")
+                                const Text("Vide, aucun element !")
                               ],
                             ));
                           }
@@ -592,9 +587,9 @@ class _wondersBodyState extends State<wondersBody> {
                               shrinkWrap: true,
                               itemCount: snapshot.data!.docs.length,
                               itemBuilder: (BuildContext context, int index) {
-                                DocumentSnapshot document =
+                                final DocumentSnapshot document =
                                     snapshot.data!.docs[index];
-                                Wonder wond = Wonder(
+                                final Wonder wond = Wonder(
                                     idWonder: document.id,
                                     wonderName: document['wonderName'],
                                     description: document['description'],
@@ -646,13 +641,13 @@ class _wondersBodyState extends State<wondersBody> {
                       children: [
                         Container(
                           height: size.height / 10,
-                          margin: EdgeInsets.all(10),
+                          margin: const EdgeInsets.all(10),
                           child:
                               Theme.of(context).brightness == Brightness.light
                                   ? Image.asset('assets/vide_light.png')
                                   : Image.asset('assets/vide_dark.png'),
                         ),
-                        Text("Vide pour le moment, bientot disponible !")
+                        const Text("Vide pour le moment, bientot disponible !")
                       ],
                     )))
         ],
@@ -687,7 +682,7 @@ class _wonderWidgetState extends State<wonderWidget>
   void initState() {
     super.initState();
     favorisBox = Hive.box<Wonder>('favoris_wonder');
-    bool estPresent = favorisBox.values.any((wonder_de_la_box) =>
+    final bool estPresent = favorisBox.values.any((wonder_de_la_box) =>
         wonder_de_la_box.idWonder == widget.wonderscat.idWonder);
     if (estPresent) {
       is_like = true;
@@ -736,7 +731,7 @@ class _wonderWidgetState extends State<wonderWidget>
         decoration: BoxDecoration(
           border: Border(
               bottom:
-                  BorderSide(color: Colors.grey.withOpacity(0.5), width: 1.0)),
+                  BorderSide(color: Colors.grey.withOpacity(0.5))),
         ),
         child: Column(
           children: [
@@ -750,7 +745,7 @@ class _wonderWidgetState extends State<wonderWidget>
                     child: Container(
                       height: 250,
                       width: widget.size.width,
-                      margin: EdgeInsets.fromLTRB(15, 15, 15, 0),
+                      margin: const EdgeInsets.fromLTRB(15, 15, 15, 0),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(15),
                         child: CachedNetworkImage(
@@ -760,7 +755,7 @@ class _wonderWidgetState extends State<wonderWidget>
                               child: shimmerOffre(
                                   width: widget.size.width, height: 250)),
                           errorWidget: (context, url, error) =>
-                              Center(child: Icon(Icons.error)),
+                              const Center(child: Icon(Icons.error)),
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -880,7 +875,6 @@ class _wonderWidgetState extends State<wonderWidget>
                                       BoxShadow(
                                         offset: const Offset(-1, -1),
                                         color: Colors.white,
-                                        blurRadius: 0,
                                       )
                                     ],
                                   )
@@ -1038,66 +1032,127 @@ class _wonderWidgetState extends State<wonderWidget>
   }
 }
 
+
 class FilterDialog extends StatefulWidget {
   FilterDialog({super.key, required this.cat, required this.listewonderscat});
   final Categorie cat;
   Stream<QuerySnapshot> listewonderscat;
 
   @override
-  _FilterDialogState createState() => _FilterDialogState();
+  FilterDialogState createState() => FilterDialogState();
 }
 
-class _FilterDialogState extends State<FilterDialog> {
-  bool _showPaidItems = false;
+class FilterDialogState extends State<FilterDialog> {
   String _selectedRegion = 'Toutes les régions';
+  String _selectedCity = 'Toutes les villes';
+  String _selectedForfait = 'Tout';
+
+  final List<String> _forfaits = [
+    'Tout',
+    'Payants',
+    'Non payants',
+  ];
+
+  final List<String> _regions = [
+    'Toutes les régions',
+    'Extreme-nord',
+    'Nord',
+    'Adamaoua',
+    'Centre',
+    'Est',
+    'Ouest',
+    'Sud',
+    'Littoral',
+    'Nord-ouest',
+    'Sud-ouest',
+  ];
+
+  final List<String> _cities = [
+    'Toutes les villes',
+    'Yaoundé',
+    'Douala',
+    'Garoua',
+    'Bamenda',
+    'Maroua',
+    'Ngaoundéré',
+    'Bafoussam',
+    'Bertoua',
+    'Ebolowa',
+    'Limbe',
+  ];
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Definissez vos options de filtrages'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CheckboxListTile(
-            title: const Text('Wonders Payants'),
-            value: _showPaidItems,
-            onChanged: (value) {
-              setState(() {
-                _showPaidItems = value!;
-              });
-            },
-          ),
-          const SizedBox(height: 16.0),
-          const Text('Choisir une région :'),
-          DropdownButton<String>(
-            value: _selectedRegion,
-            onChanged: (newValue) {
-              setState(() {
-                _selectedRegion = newValue!;
-              });
-            },
-            items: <String>[
-              'Toutes les régions',
-              'Extreme-nord',
-              'Nord',
-              'Adamaoua',
-              'Centre',
-              'Est',
-              'Ouest',
-              'Sud',
-              'Littoral',
-              'Nord-ouest',
-              'Sud-ouest',
-            ].map<DropdownMenuItem<String>>((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16.0),
-        ],
+      title: const Text('Définissez vos options de filtrage'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16.0),
+            const Text('Les wonders à afficher'),
+            DropdownButtonFormField<String>(
+              value: _selectedForfait,
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedForfait = newValue!;
+                });
+              },
+              items: _forfaits.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            const Text('Choisir une région :'),
+            DropdownButtonFormField<String>(
+              value: _selectedRegion,
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedRegion = newValue!;
+                });
+              },
+              items: _regions.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+            const Text('Choisir une ville :'),
+            DropdownButtonFormField<String>(
+              value: _selectedCity,
+              onChanged: (newValue) {
+                setState(() {
+                  _selectedCity = newValue!;
+                });
+              },
+              items: _cities.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              ),
+            ),
+            const SizedBox(height: 16.0),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -1108,10 +1163,8 @@ class _FilterDialogState extends State<FilterDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            setState(() {
-              widget.listewonderscat = widget.cat
-                  .getWondersByFilters(_showPaidItems, _selectedRegion);
-            });
+            final wondersProvider = Provider.of<WondersProvider>(context, listen: false);
+            wondersProvider.applyFilters(_selectedForfait, _selectedRegion, _selectedCity, widget.cat.categoryName);
             Navigator.of(context).pop();
           },
           child: const Text('Appliquer'),
@@ -1120,3 +1173,4 @@ class _FilterDialogState extends State<FilterDialog> {
     );
   }
 }
+

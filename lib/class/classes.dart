@@ -196,8 +196,3 @@ class WonderMeteoTime{
   WonderMeteoTime(this.date, this.temperature, this.sun, this.cloud, this.rain);
 }
 
-class NotificationItem {
-  final String message;
-
-  NotificationItem(this.message);
-}

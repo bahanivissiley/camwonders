@@ -54,15 +54,29 @@ class Categorie {
     return _firestore.collection('wonders').where('categorie', isEqualTo: categoryName).where('wonderName', isEqualTo: keyword).snapshots();
   }
 
-  Stream<QuerySnapshot> getWondersByFilters(bool gratuit, String region){
-    if(gratuit &&region == ""){
-      return _firestore.collection('wonders').where('free', isEqualTo: true).snapshots();
-    }else if(region != "" && gratuit==false){
-      return _firestore.collection('wonders').where('free', isEqualTo: false).where('region', isEqualTo: region).snapshots();
-    }else if(region != "" && gratuit){
-      return _firestore.collection('wonders').where('free', isEqualTo: true).where('region', isEqualTo: region).snapshots();
-    }else{
-      return _firestore.collection('wonders').snapshots();
+  Stream<QuerySnapshot> getWondersByFilters(bool gratuit, String region, String ville) {
+    // Créer une référence de base à la collection 'wonders'
+    CollectionReference wondersRef = _firestore.collection('wonders');
+
+    // Initialiser une requête avec la référence de base
+    Query query = wondersRef;
+
+    // Appliquer les filtres en fonction des paramètres
+    if (gratuit) {
+      query = query.where('free', isEqualTo: true);
+    } else {
+      query = query.where('free', isEqualTo: false);
     }
+
+    if (region.isNotEmpty) {
+      query = query.where('region', isEqualTo: region);
+    }
+
+    if (ville.isNotEmpty) {
+      query = query.where('ville', isEqualTo: ville);
+    }
+
+    // Retourner le flux de résultats
+    return query.snapshots();
   }
 }
