@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:camwonders/pages/AbonnementPage.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/services/camwonders.dart';
@@ -11,12 +12,14 @@ import 'package:camwonders/firebase/firebase_logique.dart';
 import 'package:camwonders/auth_pages/inscription.dart';
 import 'package:camwonders/pages/bottomNavigator/page_favoris.dart';
 import 'package:camwonders/pages/policies.dart';
+import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Profil extends StatefulWidget {
@@ -454,7 +457,7 @@ class _ProfilState extends State<Profil> {
                             Row(
                               children: [
                                 const Icon(
-                                  Icons.toggle_on,
+                                  Icons.dark_mode,
                                   color: verte,
                                 ),
                                 const SizedBox(width: 10),
@@ -496,6 +499,58 @@ class _ProfilState extends State<Profil> {
                     ),
                     GestureDetector(
                       onTap: () {
+                        Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => SubscriptionPage(),
+
+                            transitionsBuilder: (_,animation,__,child){
+                              return SlideTransition(
+                                position: Tween<Offset> (begin: const Offset(1.0, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut, reverseCurve: Curves.easeInOutBack)),
+                                child: child,
+                              );
+                            },
+                            transitionDuration: const Duration(milliseconds: 500)
+                        ));
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.grey.withOpacity(0.5),
+                                  width: 1.0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.monetization_on_rounded,
+                                  color: verte,
+                                ),
+                                const SizedBox(width: 10),
+                                Text("Passez en premium",
+                                    style: GoogleFonts.jura(
+                                        textStyle:
+                                        const TextStyle(fontSize: 15))),
+                              ],
+                            ),
+                            const Row(
+                              children: [
+                                IconButton(
+                                    onPressed: null,
+                                    icon: Icon(
+                                      LucideIcons.chevronRight,
+                                      color: verte,
+                                    ))
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
                         showDialog(
                             context: context,
                             builder: (BuildContext context) {
@@ -518,17 +573,17 @@ class _ProfilState extends State<Profil> {
                                         )),
                                   ],
                                 ),
-                                content: Column(
+                                content: const Column(
                                   mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       "Demandez une assistance",
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 25),
                                     ),
-                                    const Text(
+                                    Text(
                                         "Comment voulez-vous nous contacter pour assistance ?"),
                                   ],
                                 ),
@@ -604,6 +659,127 @@ class _ProfilState extends State<Profil> {
                       ),
                     ),
                     GestureDetector(
+                      onTap: () {
+                        showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                        decoration: BoxDecoration(
+                                            color:
+                                            Colors.green.withOpacity(0.2),
+                                            borderRadius:
+                                            BorderRadius.circular(500)),
+                                        height: 60,
+                                        width: 60,
+                                        child: const Icon(
+                                          Icons.info,
+                                          size: 30,
+                                          color: Colors.green,
+                                        )),
+                                  ],
+                                ),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: size.height/10,
+                                      child: Image.asset('assets/logo.png'),
+                                    ),
+                                    Text(
+                                      "Information de l'application",
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 25),
+                                    ),
+                                    SizedBox(height: 30,),
+                                    Text(
+                                        "Camwonders est une application mobile de tourisme destinée au amoureux de tourisme et de nouvelle expérience tant nationaux, qu'internatinaux. Elle redefinit la focon de decouvrir les lieux au cameroun"),
+                                    SizedBox(height: 30,),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.perm_contact_calendar_sharp, size: 50,),
+                                        Column(
+                                          mainAxisAlignment: MainAxisAlignment.start,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('Auteur', style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14),),
+                                            Text('Camwonders team')
+                                          ],
+                                        )
+                                      ],
+                                    )
+                                  ],
+                                ),
+                                actions: [
+                                  SizedBox(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: Column(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.spaceAround,
+                                      children: [
+                                        SizedBox(
+                                          width:
+                                          MediaQuery.of(context).size.width,
+                                          child: ElevatedButton(
+                                              onPressed: (){
+                                                Navigator.pop(context);
+                                              },
+                                              child: const Text("Ok")),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.grey.withOpacity(0.5),
+                                  width: 1.0)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  LucideIcons.info,
+                                  color: verte,
+                                ),
+                                const SizedBox(width: 10),
+                                Text("Infos sur l'application",
+                                    style: GoogleFonts.jura(
+                                        textStyle:
+                                        const TextStyle(fontSize: 15))),
+                              ],
+                            ),
+                            const Row(
+                              children: [
+                                IconButton(
+                                    onPressed: null,
+                                    icon: Icon(
+                                      LucideIcons.chevronRight,
+                                      color: verte,
+                                    ))
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
                       onTap: () async {
                         if (AuthService().currentUser != null) {
                           showDialog(
@@ -659,6 +835,7 @@ class _ProfilState extends State<Profil> {
                                                       Colors.redAccent),
                                               onPressed: () async {
                                                 await AuthService().signOut();
+                                                Provider.of<UserProvider>(context, listen: false).logout();
                                                 Navigator.pushAndRemoveUntil(
                                                   context,
                                                   MaterialPageRoute(
@@ -831,7 +1008,7 @@ class _ProfilState extends State<Profil> {
             GestureDetector(
               onTap: () {
                 Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const policies()));
+                    MaterialPageRoute(builder: (context) => const Policies()));
               },
               child: Text(
                 "Conditions d'utilisation",

@@ -1,6 +1,13 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:camwonders/class/Notification.dart';
+import 'package:camwonders/class/classes.dart';
+import 'package:camwonders/services/cachemanager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FilterButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -97,4 +104,40 @@ class WondersProvider with ChangeNotifier {
     _searchQuery = query;
     applyFilters(null, null, null, null); // Réappliquer les filtres avec la nouvelle requête de recherche
   }
+}
+
+
+
+class UserProvider with ChangeNotifier {
+  bool _isPremium = false;  // État par défaut
+
+  bool get isPremium => _isPremium;
+
+  UserProvider() {
+    _loadUserPreferences();  // Charger l'état premium au démarrage
+  }
+
+  // Charger l'état premium depuis SharedPreferences
+  Future<void> _loadUserPreferences() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    _isPremium = prefs.getBool('premium') ?? false;
+    notifyListeners(); // Notifier les widgets écoutant ce provider
+  }
+
+  // Mettre à jour l'état premium et sauvegarder
+  Future<void> setPremium(bool value) async {
+    _isPremium = value;
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('premium', value);
+    notifyListeners(); // Met à jour les widgets qui écoutent ce provider
+  }
+
+  // Déconnexion : Réinitialiser les données utilisateur
+  Future<void> logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Supprime toutes les données stockées
+    _isPremium = false;  // Réinitialise l'état premium
+    notifyListeners();   // Met à jour l'UI
+  }
+
 }

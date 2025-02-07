@@ -187,7 +187,7 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                       Gif(
                                         height: 100,
                                         image: const AssetImage(
-                                            "assets/load1.gif"),
+                                            "assets/load.gif"),
                                         autostart: Autostart.loop,
                                       ),
                                       Text(contenupop)
@@ -295,7 +295,7 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                               Gif(
                                                 height: 100,
                                                 image: const AssetImage(
-                                                    "assets/load1.gif"),
+                                                    "assets/load.gif"),
                                                 autostart: Autostart.loop,
                                               ),
                                               Text(
@@ -337,7 +337,7 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                                     Gif(
                                                       height: 100,
                                                       image: const AssetImage(
-                                                          "assets/succes1.gif"),
+                                                          "assets/succes.gif"),
                                                       autostart: Autostart.loop,
                                                     ),
                                                     Container(
@@ -489,7 +489,7 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                               Gif(
                                                 height: 100,
                                                 image: const AssetImage(
-                                                    "assets/load1.gif"),
+                                                    "assets/load.gif"),
                                                 autostart: Autostart.loop,
                                               ),
                                               Text(
@@ -531,7 +531,7 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                                     Gif(
                                                       height: 100,
                                                       image: const AssetImage(
-                                                          "assets/succes1.gif"),
+                                                          "assets/succes.gif"),
                                                       autostart: Autostart.loop,
                                                     ),
                                                     Container(

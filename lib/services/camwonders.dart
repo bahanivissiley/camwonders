@@ -29,11 +29,6 @@ class Camwonder {
     final CollectionReference users = FirebaseFirestore.instance.collection('users');
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     if (await checkIfUserExists(id)) {
-      await prefs.setString('id', id);
-      await prefs.setString('nom', nom!);
-      await prefs.setString('identifiant', identifiant!);
-      await prefs.setBool('premium', false);
-      await prefs.setString('profilPath', profilPath!);
       return;
     } else {
       if (profilPath != null) {
@@ -224,15 +219,17 @@ class Camwonder {
 
   Future<Utilisateur?> getUserByUniqueId(String userId) async {
     try {
-      final DocumentSnapshot<Map<String, dynamic>> querySnapshot =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userId)
-              .get();
+      final QuerySnapshot<Map<String, dynamic>> querySnapshot =
+      await FirebaseFirestore.instance
+          .collection('users')
+          .where('id', isEqualTo: userId)
+          .limit(1) // Prend uniquement le premier résultat
+          .get();
 
-      if (querySnapshot.exists) {
-        return Utilisateur.fromDocument(querySnapshot);
+      if (querySnapshot.docs.isNotEmpty) {
+        return Utilisateur.fromDocument(querySnapshot.docs.first);
       } else {
+        print('Utilisateur non trouvé pour l\'id: $userId');
         return null;
       }
     } catch (e) {
@@ -240,4 +237,24 @@ class Camwonder {
       return null;
     }
   }
+
+
+  Future<Utilisateur?> getUserByUniqueRealId(String userId) async {
+      try {
+        final DocumentSnapshot<Map<String, dynamic>> querySnapshot =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .get();
+
+        if (querySnapshot.exists) {
+          return Utilisateur.fromDocument(querySnapshot);
+        } else {
+          return null;
+        }
+      } catch (e) {
+        print('Erreur lors de la récupération de l\'utilisateur : $e');
+        return null;
+      }
+    }
 }

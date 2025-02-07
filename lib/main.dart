@@ -5,7 +5,6 @@ import 'package:camwonders/firebase/firebase_logique.dart';
 import 'package:camwonders/firebase/firebase_options.dart';
 import 'package:camwonders/mainapp.dart';
 import 'package:camwonders/pages/welcome.dart';
-import 'package:camwonders/services/gestionNotifications.dart';
 import 'package:camwonders/widgetGlobal.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -13,9 +12,8 @@ import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
-//import 'package:google_fonts/google_fonts.dart';
-// Import the firebase_app_check plugin
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:camwonders/class/Notification.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +23,6 @@ void main() async {
   await Hive.initFlutter();
   Hive.registerAdapter(WonderAdapter());
   Hive.registerAdapter(CategorieAdapter());
-  Hive.registerAdapter(NotificationItemAdapter());
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
     webProvider: ReCaptchaV3Provider('recaptcha-v3-site-key'),
@@ -33,7 +30,6 @@ void main() async {
   );
 
   await Hive.openBox<Wonder>('favoris_wonder');
-  await Hive.openBox<NotificationItem>('notificationItems');
 
   final notificationSettings = await FirebaseMessaging.instance.requestPermission(provisional: true);
   final fcmToken = await FirebaseMessaging.instance.getToken();
@@ -44,11 +40,18 @@ void main() async {
       .onError((err) {
   });
 
-  gestionNotification().addNotif();
-  runApp(ChangeNotifierProvider(
-    create: (_) => WondersProvider(),
-    child: const MyApp(),
-  ),);
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => WondersProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
+
 }
 
 class MyApp extends StatelessWidget {

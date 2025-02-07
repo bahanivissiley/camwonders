@@ -1,4 +1,6 @@
 import 'package:camwonders/auth_pages/debut_inscription.dart';
+import 'package:camwonders/class/Utilisateur.dart';
+import 'package:camwonders/pages/AbonnementPage.dart';
 import 'package:camwonders/pages/bottomNavigator/page_favoris.dart';
 import 'package:camwonders/pages/bottomNavigator/reservations.dart';
 import 'package:camwonders/services/cachemanager.dart';
@@ -304,12 +306,7 @@ class wondersBody extends StatefulWidget {
 }
 
 class _wondersBodyState extends State<wondersBody> {
-  final List<String> notifications = [
-    'Notification 1',
-    'Notification 2',
-    'Notification 3',
-    // Ajoutez d'autres notifications selon vos besoins
-  ];
+
   final TextEditingController _controller = TextEditingController();
 
   bool isLoading = false;
@@ -353,6 +350,7 @@ class _wondersBodyState extends State<wondersBody> {
         actions: [
           AuthService().currentUser == null
               ? Container(
+            margin: EdgeInsets.only(right: 10),
                   child: GestureDetector(
                   onTap: () {
                     Navigator.pushReplacement(
@@ -399,62 +397,7 @@ class _wondersBodyState extends State<wondersBody> {
                   ),
                 ))
               : Container(),
-          Container(
-            margin: const EdgeInsets.only(right: 10),
-            child: Stack(
-              alignment: Alignment.centerRight,
-              children: [
-                PopupMenuButton<String>(
-                  icon: const Icon(LucideIcons.bell),
-                  itemBuilder: (BuildContext context) {
-                    return notifications.map((String notification) {
-                      return PopupMenuItem<String>(
-                        value: notification,
-                        child: Text(notification),
-                      );
-                    }).toList();
-                  },
-                  onSelected: (String notification) {
-                    // Traitez la notification sélectionnée ici
-                    showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text(notification),
-                            content: const Text("Contenu de la notification"),
-                            actions: [
-                              TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                  },
-                                  child: const Text("Marquer comme lu")),
-                              TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(context);
-                                  },
-                                  child: const Text("Retour")),
-                            ],
-                          );
-                        });
-                  },
-                ),
-                notifications.isNotEmpty
-                    ? Container(
-                        margin: const EdgeInsets.only(bottom: 15, right: 5),
-                        padding: const EdgeInsets.fromLTRB(6, 1, 6, 1),
-                        decoration: BoxDecoration(
-                            color: const Color(0xff226900),
-                            borderRadius: BorderRadius.circular(10)),
-                        child: Text(
-                          notifications.length.toString(),
-                          style: GoogleFonts.lalezar(
-                              textStyle: const TextStyle(
-                                  fontSize: 12, color: Colors.white)),
-                        ))
-                    : const SizedBox()
-              ],
-            ),
-          ),
+
         ],
       ),
       body: Column(
@@ -605,25 +548,29 @@ class _wondersBodyState extends State<wondersBody> {
                                     categorie: document['categorie'],
                                     isreservable: document['isreservable']);
                                 return GestureDetector(
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                        pageBuilder: (context, animation,
-                                                secondaryAnimation) =>
-                                            wonder_page(wond: wond),
-                                        transitionDuration:
-                                            const Duration(milliseconds: 500),
-                                        transitionsBuilder: (context, animation,
-                                            secondaryAnimation, child) {
-                                          animation = CurvedAnimation(
-                                              parent: animation,
-                                              curve: Curves.easeIn);
-                                          return FadeTransition(
-                                            opacity: animation,
-                                            child: child,
-                                          );
-                                        }),
-                                  ),
+                                  onTap: () {
+                                    wond.free ? Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                          pageBuilder: (context, animation,
+                                              secondaryAnimation) =>
+                                              wonder_page(wond: wond),
+                                          transitionDuration:
+                                          const Duration(milliseconds: 500),
+                                          transitionsBuilder: (context, animation,
+                                              secondaryAnimation, child) {
+                                            animation = CurvedAnimation(
+                                                parent: animation,
+                                                curve: Curves.easeIn);
+                                            return FadeTransition(
+                                              opacity: animation,
+                                              child: child,
+                                            );
+                                          }),
+                                    ) :
+                                    Navigator.push(context,
+                                        MaterialPageRoute(builder: (context) => SubscriptionPage()));
+                                  },
                                   child: isLoading
                                       ? shimmerWonder(
                                           width: size.width,
@@ -722,6 +669,7 @@ class _wonderWidgetState extends State<wonderWidget>
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     return Animate(
       effects: [FadeEffect(duration: 500.ms)],
       child: Container(
@@ -746,18 +694,38 @@ class _wonderWidgetState extends State<wonderWidget>
                       height: 250,
                       width: widget.size.width,
                       margin: const EdgeInsets.fromLTRB(15, 15, 15, 0),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: CachedNetworkImage(
-                          cacheManager: CustomCacheManager(),
-                          imageUrl: widget.wonderscat.imagePath,
-                          placeholder: (context, url) => Center(
-                              child: shimmerOffre(
-                                  width: widget.size.width, height: 250)),
-                          errorWidget: (context, url, error) =>
-                              const Center(child: Icon(Icons.error)),
-                          fit: BoxFit.cover,
-                        ),
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 250,
+                            width: widget.size.width,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: CachedNetworkImage(
+                                cacheManager: CustomCacheManager(),
+                                imageUrl: widget.wonderscat.imagePath,
+                                placeholder: (context, url) => Center(
+                                    child: shimmerOffre(
+                                        width: widget.size.width, height: 250)),
+                                errorWidget: (context, url, error) =>
+                                    const Center(child: Icon(Icons.error)),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+
+
+
+                          (userProvider.isPremium || widget.wonderscat.free)
+                              ? const SizedBox()  // Un widget vide au lieu d'un Center inutile
+                              : Container(
+                            height: 250,
+                            width: widget.size.width,
+                            color: Colors.black.withOpacity(0.6),
+                            child: const Icon(Icons.lock, size: 100, color: Colors.white),
+                          ),
+
+                        ],
                       ),
                     ),
                   ),
@@ -921,7 +889,6 @@ class _wonderWidgetState extends State<wonderWidget>
                           const Icon(LucideIcons.dot),
                           Text("Région du : ${widget.wonderscat.region}"),
                           const Icon(LucideIcons.dot),
-                          const Text("24km"),
                         ],
                       ),
                       Row(
@@ -1015,7 +982,7 @@ class _wonderWidgetState extends State<wonderWidget>
                         ],
                       ),
                       Text(
-                        "Personnes qui aiment ce lieu : ${widget.wonderscat.note}",
+                        "Categorie : ${widget.wonderscat.categorie}",
                         style: const TextStyle(
                             color: Color(0xff226900),
                             fontWeight: FontWeight.bold),

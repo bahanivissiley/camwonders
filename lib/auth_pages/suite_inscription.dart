@@ -192,7 +192,7 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
                                             Gif(
                                               height: 100,
                                               image: const AssetImage(
-                                                  "assets/load1.gif"),
+                                                  "assets/load.gif"),
                                               autostart: Autostart.loop,
                                             ),
                                             const Text(
@@ -296,7 +296,7 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
                 children: [
                   Gif(
                     height: 100,
-                    image: const AssetImage("assets/load1.gif"),
+                    image: const AssetImage("assets/load.gif"),
                     autostart: Autostart.loop,
                     placeholder: (context) => const Text('Loading...'),
                   ),
@@ -328,7 +328,7 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
                       children: [
                         Gif(
                           height: 100,
-                          image: const AssetImage("assets/succes1.gif"),
+                          image: const AssetImage("assets/succes.gif"),
                           autostart: Autostart.loop,
                         ),
                         Container(

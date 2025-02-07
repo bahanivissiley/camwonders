@@ -29,6 +29,7 @@ class Wondershort extends StatefulWidget {
 class _WondershortState extends State<Wondershort> {
   late final Stream<List<WonderShort>> _wondershortStream;
   late List<VideoPlayerController> _controllers;
+  bool _isload = true;
   late int _currentIndex;
   final int _preloadOffset = 2;
 
@@ -51,16 +52,23 @@ class _WondershortState extends State<Wondershort> {
   }
 
   void _preloadInitialVideos() {
+    setState(() {
+      _isload = false;
+    });
     _wondershortStream.listen((List<WonderShort> wondershorts) {
-      for (int i = 0; i < _preloadOffset && i < wondershorts.length; i++) {
-        _addVideoController(wondershorts[i]);
+      if (wondershorts.isNotEmpty) {
+        for (int i = 0; i < _preloadOffset && i < wondershorts.length; i++) {
+          _addVideoController(wondershorts[i]);
+        }
       }
     });
   }
 
   void _preloadMoreVideos(List<WonderShort> wondershorts, int startIndex) {
-    for (int i = startIndex; i < startIndex + _preloadOffset && i < wondershorts.length; i++) {
-      _addVideoController(wondershorts[i]);
+    if (wondershorts.isNotEmpty) {
+      for (int i = startIndex; i < startIndex + _preloadOffset && i < wondershorts.length; i++) {
+        _addVideoController(wondershorts[i]);
+      }
     }
   }
 
@@ -99,7 +107,7 @@ class _WondershortState extends State<Wondershort> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<WonderShort>>(
+    return _isload ? const Center(child: CircularProgressIndicator(color: Colors.green)) : StreamBuilder<List<WonderShort>>(
       stream: _wondershortStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -110,7 +118,7 @@ class _WondershortState extends State<Wondershort> {
           return const Center(child: CircularProgressIndicator(color: Colors.green));
         }
 
-        List<WonderShort> wondershorts = snapshot.data!;
+        final List<WonderShort> wondershorts = snapshot.data!;
 
         return Stack(
           children: [
@@ -120,22 +128,28 @@ class _WondershortState extends State<Wondershort> {
                 scrollDirection: Axis.vertical,
                 viewportFraction: 1.0,
                 onPageChanged: (index, reason) {
-                  if (index >= _currentIndex + _preloadOffset - 1) {
-                    _preloadMoreVideos(wondershorts, _currentIndex + _preloadOffset);
-                  }
+                  if (_controllers.isNotEmpty && index < _controllers.length) {
+                    if (index >= _currentIndex + _preloadOffset - 1) {
+                      _preloadMoreVideos(wondershorts, _currentIndex + _preloadOffset);
+                    }
 
-                  _controllers[_currentIndex].pause();
-                  _controllers[index].play();
-                  _controllers[index].setLooping(true);
-                  _currentIndex = index;
+                    _controllers[_currentIndex].pause();
+                    _controllers[index].play();
+                    _controllers[index].setLooping(true);
+                    _currentIndex = index;
+                  }
                 },
               ),
               itemCount: wondershorts.length,
               itemBuilder: (context, index, realIndex) {
-                return VideoShort(
-                  item: wondershorts[index],
-                  controller: _controllers[index],
-                );
+                if (index < _controllers.length) {
+                  return VideoShort(
+                    item: wondershorts[index],
+                    controller: _controllers[index],
+                  );
+                } else {
+                  return const Center(child: CircularProgressIndicator(color: Colors.green));
+                }
               },
             ),
             Container(
@@ -205,7 +219,7 @@ class _VideoShortState extends State<VideoShort> {
 
   Future<void> _fetchWonder() async {
     try {
-      Wonder? futureWonder = await Camwonder().getWonderById(widget.item.wond);
+      final Wonder? futureWonder = await Camwonder().getWonderById(widget.item.wond);
       if (futureWonder != null) {
         setState(() {
           _wonder = futureWonder;
@@ -494,7 +508,7 @@ class _CommentWidgetState extends State<CommentWidget> {
 
   Future<void> _fetchUserInfo() async {
     try {
-      Utilisateur user = await Camwonder().getUserInfo();
+      final Utilisateur user = await Camwonder().getUserInfo();
       setState(() {
         _user = user;
         _isLoading = false;
@@ -572,10 +586,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                                   height:
                                       MediaQuery.of(context).size.height / 20,
                                   margin: const EdgeInsets.all(20),
-                                  child: Theme.of(context).brightness ==
-                                          Brightness.light
-                                      ? Image.asset('assets/vide_light.png')
-                                      : Image.asset('assets/vide_dark.png'),
+                                  child: Image.asset('assets/review.png'),
                                 ),
                                 const Text("Pas de commentaires !")
                               ],
@@ -586,9 +597,9 @@ class _CommentWidgetState extends State<CommentWidget> {
                             shrinkWrap: true,
                             itemCount: snapshot.data!.docs.length,
                             itemBuilder: (BuildContext context, int index) {
-                              DocumentSnapshot document =
+                              final DocumentSnapshot document =
                                   snapshot.data!.docs[index];
-                              Comment com = Comment(
+                              final Comment com = Comment(
                                   idComment: document.id,
                                   content: document['content'],
                                   wondershort: document['wondershort'],
@@ -705,7 +716,7 @@ class _CommentaireWidgetState extends State<CommentaireWidget> {
   void _loadUser() async {
     // Appel de la méthode pour récupérer l'utilisateur
     try {
-      Utilisateur? user = await Camwonder().getUserByUniqueId(widget.com.user);
+      final Utilisateur? user = await Camwonder().getUserByUniqueId(widget.com.user);
       // Vérification de l'état du widget avant de mettre à jour l'état
       if (mounted) {
         setState(() {
@@ -760,10 +771,10 @@ class _CommentaireWidgetState extends State<CommentaireWidget> {
                       child: CachedNetworkImage(
                         cacheManager: CustomCacheManagerLong(),
                         imageUrl: profilPath,
-                        placeholder: (context, url) => const Center(
-                            child: CircularProgressIndicator(
-                          color: Color(0xff226900),
-                        )),
+                        placeholder: (context, url) => Center(
+                            child: SizedBox(
+                              child: Image.asset('assets/holder.jpg'),
+                            ),),
                         errorWidget: (context, url, error) =>
                             const Center(child: Icon(Icons.error)),
                         fit: BoxFit.cover,

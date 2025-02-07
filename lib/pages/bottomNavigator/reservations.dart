@@ -94,11 +94,11 @@ class _reservationsState extends State<reservations> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
-                            height: size.height / 12,
+                            height: size.height / 8,
                             child:
                                 Theme.of(context).brightness == Brightness.light
-                                    ? Image.asset('assets/vide_light.png')
-                                    : Image.asset('assets/vide_dark.png'),
+                                    ? Image.asset('assets/reservation.png')
+                                    : Image.asset('assets/reservation.png'),
                           ),
                           const Text("Pas de reservations")
                         ],

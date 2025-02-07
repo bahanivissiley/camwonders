@@ -28,6 +28,17 @@ class _GuidesDetailsState extends State<GuidesDetails> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pop(context); // Retour à l'écran précédent
+          },
+        ),
+        backgroundColor: Colors.transparent, // Arrière-plan transparent
+        elevation: 0,
+      ),
       body: Container(
         //padding: const EdgeInsets.all(50),
         child: Stack(

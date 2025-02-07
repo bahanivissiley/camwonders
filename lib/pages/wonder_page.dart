@@ -3,8 +3,10 @@ import 'dart:io';
 import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camwonders/auth_pages/debut_inscription.dart';
+import 'package:camwonders/pages/AbonnementPage.dart';
 import 'package:camwonders/pages/evenement_details.dart';
 import 'package:camwonders/pages/guides_details.dart';
+import 'package:camwonders/pages/test.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/Wonder.dart';
@@ -13,6 +15,7 @@ import 'package:camwonders/class/classes.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
+import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -28,6 +31,8 @@ import 'package:latlong2/latlong.dart' as latLng;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
+import 'package:open_route_service/open_route_service.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_view/photo_view.dart';
 
@@ -48,8 +53,8 @@ class _wonder_pageState extends State<wonder_page> {
   final verte = const Color(0xff226900);
   double userLong = 0.0;
   double userLat = 0.0;
-  List<latLng.LatLng> routePoints = [];
-
+  ValueNotifier<double?> load_val = ValueNotifier<double?>(null);
+  ValueNotifier<bool> isLoading = ValueNotifier<bool>(true);
   final PageController _pageStorieController = PageController();
 
   _wonder_pageState({required this.wond});
@@ -60,15 +65,18 @@ class _wonder_pageState extends State<wonder_page> {
   late final Future<QuerySnapshot> images;
   String _locationMessage = "";
   List<LatLng> points = [];
+  double distanceKm = 0.0;
   MapController mapController = MapController();
   String devise = "FCFA";
+  String apiKey = "5b3ce3597851110001cf6248b61e34e52a804a1681656eec996f618b";
 
   @override
   void initState() {
     super.initState();
     _verifyConnection();
     _getCurrentLocation();
-    _fetchRoute();
+    mapController = MapController();
+    getRoute();
     images = FirebaseFirestore.instance
         .collection('images_wonder')
         .where('wonder_id', isEqualTo: wond.idWonder)
@@ -88,9 +96,6 @@ class _wonder_pageState extends State<wonder_page> {
     chargercached();
   }
 
-
-
-
   Future<void> chargercached() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     devise = prefs.getString('devise')!;
@@ -106,7 +111,7 @@ class _wonder_pageState extends State<wonder_page> {
     }
   }
 
-  void _getCurrentLocation() async {
+  _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -206,7 +211,7 @@ class _wonder_pageState extends State<wonder_page> {
                                       Gif(
                                         height: 100,
                                         image: const AssetImage(
-                                            "assets/succes1.gif"),
+                                            "assets/succes.gif"),
                                         autostart: Autostart.loop,
                                         placeholder: (context) =>
                                             const Text('Loading...'),
@@ -269,39 +274,50 @@ class _wonder_pageState extends State<wonder_page> {
     return 'http://openweathermap.org/img/wn/$iconId@2x.png';
   }
 
-  Future<void> _fetchRoute() async {
-    final response = await http.get(Uri.parse(
-      'https://api.openrouteservice.org/v2/directions/driving-car?api_key=5b3ce3597851110001cf6248b61e34e52a804a1681656eec996f618b&start=${userLong},${userLat}&end=${wond.longitude},${wond.latitude}',
-    ));
+  Future<void> getRoute() async {
+    await _getCurrentLocation();
 
+    // Vérifier que la localisation est disponible
+    if (userLat == null || userLong == null) {
+      print("User location is not available.");
+      return;
+    }
+    final url = Uri.parse(
+        "https://api.openrouteservice.org/v2/directions/driving-car?api_key=$apiKey&start=${userLong},${userLat}&end=${wond.longitude},${wond.latitude}");
 
+    final response = await http.get(url);
 
-    try {
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
 
-        // Extraction des points de la géométrie
-        final List<dynamic> coordinates =
-        data['routes'][0]['geometry']['coordinates'];
-
-        // Conversion en LatLng
-        setState(() {
-          routePoints = coordinates
-              .map((coord) => latLng.LatLng(coord[1], coord[0]))
-              .toList();
-        });
-      } else {
-        print("Erreur API : ${response.statusCode}");
+      if (data["features"] == null || data["features"].isEmpty) {
+        return;
       }
-    } catch (e) {
-      print("Erreur lors de l'appel API : $e");
+
+      // Récupérer les coordonnées de l'itinéraire
+      final coordinates = data["features"][0]["geometry"]["coordinates"];
+
+      // Récupérer la distance totale (en mètres)
+      double distanceMeters =
+          data["features"][0]["properties"]["segments"][0]["distance"];
+
+      setState(() {
+        points = coordinates
+            .map<LatLng>((coord) => LatLng(coord[1], coord[0]))
+            .toList();
+        distanceKm = distanceMeters / 1000; // Convert meters to km
+      });
+
+      load_val.value = 10.0;
+    } else {
+      print("Error fetching route: ${response.body}");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
+    final userProvider = Provider.of<UserProvider>(context);
     return Scaffold(
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
@@ -370,7 +386,6 @@ class _wonder_pageState extends State<wonder_page> {
                   : isItinairaire
                       ? ItinairaireWonder(size)
                       : ImagesWonders(wond: wond),
-
               Container(
                   padding: EdgeInsets.only(
                       left: size.width / 16, right: size.width / 16),
@@ -399,7 +414,7 @@ class _wonder_pageState extends State<wonder_page> {
                               color: const Color(0xff226900),
                             ),
                             Text(
-                              "24km de votre position",
+                              "${distanceKm.toStringAsFixed(2)} km de votre position",
                               style: GoogleFonts.jura(
                                   textStyle: const TextStyle(
                                       fontWeight: FontWeight.bold)),
@@ -485,6 +500,50 @@ class _wonder_pageState extends State<wonder_page> {
                           ],
                         ),
                         descriptionWidget(wond: wond),
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 20),
+                          child: Column(
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(
+                                    Icons.directions_car,
+                                    size: 30,
+                                  ),
+                                  SizedBox(
+                                    width: 10,
+                                  ),
+                                  Text(
+                                    "Accès par voiture",
+                                    style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(
+                                height: 10,
+                              ),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.monetization_on_rounded,
+                                    size: 30,
+                                  ),
+                                  const SizedBox(
+                                    width: 10,
+                                  ),
+                                  Text(
+                                    "À partir de ${wond.free ? "Gratuit" : (devise == "FCFA" ? "${wond.price} FCFA" : "\$${(wond.price / 600).toStringAsFixed(2)}")}",
+                                    style: const TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -502,7 +561,8 @@ class _wonder_pageState extends State<wonder_page> {
                                 builder: (context, snapshot) {
                                   if (snapshot.hasError) {
                                     return const Center(
-                                        child: Text('Something went wrong'));
+                                        child: Text(
+                                            "Quelques n'a pas bien marché"));
                                   }
 
                                   if (snapshot.connectionState ==
@@ -578,7 +638,8 @@ class _wonder_pageState extends State<wonder_page> {
                                 builder: (context, snapshot) {
                                   if (snapshot.hasError) {
                                     return const Center(
-                                        child: Text('Something went wrong'));
+                                        child: Text(
+                                            "Quelques n'a pas bien marché"));
                                   }
 
                                   if (snapshot.connectionState ==
@@ -593,7 +654,7 @@ class _wonder_pageState extends State<wonder_page> {
                                       snapshot.data!.isEmpty) {
                                     return Center(
                                         child: Text(
-                                            "Pas de problèmes pource lieu",
+                                            "Pas de limites enregistrées pour ce lieu",
                                             style: GoogleFonts.jura(
                                                 textStyle: const TextStyle(
                                                     fontSize: 12,
@@ -1006,12 +1067,9 @@ class _wonder_pageState extends State<wonder_page> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Container(
-                                    height: size.height / 20,
+                                    height: size.height / 13,
                                     margin: const EdgeInsets.all(20),
-                                    child: Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? Image.asset('assets/vide_light.png')
-                                        : Image.asset('assets/vide_dark.png'),
+                                    child: Image.asset('assets/review.png'),
                                   ),
                                   const Text("Pas d'avis !")
                                 ],
@@ -1088,9 +1146,9 @@ class _wonder_pageState extends State<wonder_page> {
                                                                   .brightness ==
                                                               Brightness.light
                                                           ? Image.asset(
-                                                              'assets/vide_light.png')
+                                                              'assets/review.png')
                                                           : Image.asset(
-                                                              'assets/vide_dark.png'),
+                                                              'assets/review.png'),
                                                     ),
                                                     const Text("Pas d'avis !")
                                                   ],
@@ -1104,8 +1162,8 @@ class _wonder_pageState extends State<wonder_page> {
                                                   itemBuilder:
                                                       (BuildContext context,
                                                           int index) {
-                                                    final DocumentSnapshot document =
-                                                        snapshot
+                                                    final DocumentSnapshot
+                                                        document = snapshot
                                                             .data!.docs[index];
                                                     final Avis avis = Avis(
                                                       idAvis: document.id,
@@ -1132,18 +1190,18 @@ class _wonder_pageState extends State<wonder_page> {
                                 },
                                 style: ButtonStyle(
                                   backgroundColor:
-                                      MaterialStateProperty.all<Color>(
+                                      WidgetStateProperty.all<Color>(
                                           Colors.transparent),
                                   foregroundColor:
-                                      MaterialStateProperty.all(verte),
+                                      WidgetStateProperty.all(verte),
                                   shape:
-                                      MaterialStateProperty.all<OutlinedBorder>(
+                                      WidgetStateProperty.all<OutlinedBorder>(
                                           RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(20))),
-                                  side: MaterialStateProperty.all<BorderSide>(
+                                  side: WidgetStateProperty.all<BorderSide>(
                                       BorderSide(color: verte)),
-                                  padding: MaterialStateProperty.all<
+                                  padding: WidgetStateProperty.all<
                                           EdgeInsetsGeometry>(
                                       EdgeInsets.fromLTRB(size.width / 4, 7,
                                           size.width / 4, 7)),
@@ -1166,7 +1224,9 @@ class _wonder_pageState extends State<wonder_page> {
               GuidesList(wond: wond, size: size),
               Container(
                 margin: EdgeInsets.only(
-                    left: size.width / 16, right: size.width / 16,),
+                  left: size.width / 16,
+                  right: size.width / 16,
+                ),
                 child: Text(
                   "Similaires",
                   style: GoogleFonts.lalezar(
@@ -1253,13 +1313,20 @@ class _wonder_pageState extends State<wonder_page> {
               onPressed: () {
                 if (AuthService().currentUser != null) {
                   if (wond.isreservable) {
-                    showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            content: ReservationModal(wond: wond),
-                          );
-                        });
+                    if (userProvider.isPremium) {
+                      showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              content: ReservationModal(wond: wond),
+                            );
+                          });
+                    } else {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => SubscriptionPage()));
+                    }
                   } else {
                     showDialog(
                         context: context,
@@ -1293,10 +1360,43 @@ class _wonder_pageState extends State<wonder_page> {
             ElevatedButton(
                 onPressed: () {
                   if (AuthService().currentUser != null) {
-                    setState(() {
-                      isItinairaire = true;
-                      is_map = false;
-                    });
+                    if (userProvider.isPremium) {
+                      if (userLong != 0) {
+                        setState(() {
+                          isItinairaire = true;
+                          is_map = false;
+                        });
+                      } else {
+                        showDialog(
+                          context: context,
+                          barrierDismissible:
+                              false, // Empêche la fermeture du modal en cliquant à l'extérieur
+                          builder: (BuildContext context) {
+                            return const AlertDialog(
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircularProgressIndicator(), // Indicateur de chargement
+                                  SizedBox(height: 16), // Espacement
+                                  Text('Veuillez patienter...'),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+
+                        load_val.addListener(() {
+                          if (load_val.value != null) {
+                            Navigator.of(context).pop(); // Fermer le modal
+                          }
+                        });
+                      }
+                    } else {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => SubscriptionPage()));
+                    }
                   } else {
                     connect_first(context);
                   }
@@ -1434,14 +1534,9 @@ class _wonder_pageState extends State<wonder_page> {
                 children: [
                   Container(
                     decoration: BoxDecoration(
-                        color: const Color(0xff226900),
-                        borderRadius: BorderRadius.circular(5),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: Color.fromARGB(255, 148, 148, 148),
-                              blurRadius: 2,
-                              offset: Offset(0, 3))
-                        ]),
+                      color: const Color(0xff226900),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                     padding: const EdgeInsets.all(10),
                     child: Text(
                       "Accèss",
@@ -1452,14 +1547,11 @@ class _wonder_pageState extends State<wonder_page> {
                   ),
                   Container(
                     decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(5),
-                        color: Colors.white,
-                        boxShadow: const [
-                          BoxShadow(
-                              color: Color.fromARGB(255, 160, 160, 160),
-                              blurRadius: 2,
-                              offset: Offset(0, 3))
-                        ]),
+                      borderRadius: BorderRadius.circular(5),
+                      color: Theme.of(context).brightness == Brightness.light
+                          ? Colors.white
+                          : Colors.transparent,
+                    ),
                     padding: const EdgeInsets.all(10),
                     child: Text(
                       wond.free ? "Gratuit" : "Payant",
@@ -1543,61 +1635,113 @@ class _wonder_pageState extends State<wonder_page> {
     return SizedBox(
       height: 350,
       width: size.width,
-      child: FlutterMap(
-        mapController: mapController,
-        options: MapOptions(
-          initialCenter: latLng.LatLng(
-              double.parse(wond.latitude), double.parse(wond.longitude)),
-          initialZoom: 10,
-          interactionOptions:
-              const InteractionOptions(flags: ~InteractiveFlag.doubleTapZoom),
-        ),
+      child: Stack(
+        alignment: Alignment(1, 1),
         children: [
-          openStreetMapTileLatter,
-          PolylineLayer(
-            polylines: [
-              Polyline(
-                points: routePoints,
-                strokeWidth: 4.0,
-                color: Colors.blue,
+          FlutterMap(
+            mapController: mapController,
+            options: MapOptions(
+              initialCenter: latLng.LatLng(userLat, userLong),
+              initialZoom: 13,
+              interactionOptions: const InteractionOptions(
+                  flags: ~InteractiveFlag.doubleTapZoom),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate:
+                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                subdomains: ['a', 'b', 'c'],
+              ),
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: points,
+                    strokeWidth: 4.0,
+                    color: Colors.blue,
+                  ),
+                ],
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    width: 80.0,
+                    height: 80.0,
+                    point: latLng.LatLng(userLat, userLong),
+                    child: Container(
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 40.0,
+                      ),
+                    ),
+                  ),
+                  Marker(
+                    width: 80.0,
+                    height: 80.0,
+                    point: latLng.LatLng(double.parse(wond.latitude),
+                        double.parse(wond.longitude)),
+                    child: Container(
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.green,
+                        size: 40.0,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          MarkerLayer(
-            markers: [
-              Marker(
-                width: 80.0,
-                height: 80.0,
-                point: LatLng(userLat, userLong),
-                child: Container(
-                  child: const Icon(
-                    Icons.location_on,
-                    color: Colors.red,
-                    size: 40.0,
+          Container(
+            margin: EdgeInsets.only(right: 5),
+            child: ElevatedButton(
+              onPressed: () {
+                {
+                  Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                          pageBuilder: (_, __, ___) => MapScreen(
+                                userLong: userLong,
+                                userLat: userLat,
+                                endLat: double.parse(wond.latitude),
+                                endLong: double.parse(wond.longitude),
+                                distanceKm: distanceKm,
+                              ),
+                          transitionsBuilder: (_, animation, __, child) {
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                      begin: const Offset(1.0, 0.0),
+                                      end: Offset.zero)
+                                  .animate(CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeInOut,
+                                      reverseCurve: Curves.easeInOutBack)),
+                              child: child,
+                            );
+                          },
+                          transitionDuration:
+                              const Duration(milliseconds: 500)));
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Agrandir",
+                    style: TextStyle(color: Colors.white),
                   ),
-                ),
-              ),
-              Marker(
-                width: 80.0,
-                height: 80.0,
-                point: LatLng(
-                    double.parse(wond.latitude), double.parse(wond.longitude)),
-                child: Container(
-                  child: const Icon(
-                    Icons.location_on,
-                    color: Colors.green,
-                    size: 40.0,
+                  Icon(
+                    Icons.route,
+                    color: Colors.white,
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
-
-
 
   void _showReviewModal(BuildContext context) {
     showModalBottomSheet(
@@ -1614,12 +1758,6 @@ TileLayer get openStreetMapTileLatter => TileLayer(
       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
       userAgentPackageName: 'dev.fleaflet.flutter_map.example',
     );
-
-
-
-
-
-
 
 class ImagesWonders extends StatefulWidget {
   const ImagesWonders({super.key, required this.wond});
@@ -1661,7 +1799,8 @@ class _ImagesWondersState extends State<ImagesWonders> {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          backgroundColor: Colors.black, // Fond noir pour un effet plus professionnel
+          backgroundColor:
+              Colors.black, // Fond noir pour un effet plus professionnel
           insetPadding: EdgeInsets.zero, // Supprimer les marges du dialogue
           child: Stack(
             children: [
@@ -1678,7 +1817,8 @@ class _ImagesWondersState extends State<ImagesWonders> {
                     child: CircularProgressIndicator(
                       value: event == null
                           ? 0
-                          : event.cumulativeBytesLoaded / event.expectedTotalBytes!,
+                          : event.cumulativeBytesLoaded /
+                              event.expectedTotalBytes!,
                     ),
                   );
                 },
@@ -1712,13 +1852,14 @@ class _ImagesWondersState extends State<ImagesWonders> {
     );
   }
 
-
   List<Widget> _buildDots() {
     final int totalDots = _documents?.length ?? 0;
     final int visibleDots = 5; // Nombre de points à afficher
-    final int halfWindow = (visibleDots ~/ 2); // Nombre de points à afficher de chaque côté de l'index actuel
+    final int halfWindow = (visibleDots ~/
+        2); // Nombre de points à afficher de chaque côté de l'index actuel
 
-    int start = (_currentPageIndex - halfWindow).clamp(0, totalDots - visibleDots);
+    int start =
+        (_currentPageIndex - halfWindow).clamp(0, totalDots - visibleDots);
     int end = (start + visibleDots).clamp(0, totalDots);
 
     if (totalDots < visibleDots) {
@@ -1745,9 +1886,14 @@ class _ImagesWondersState extends State<ImagesWonders> {
           height: 8,
           margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _currentPageIndex == i ? Colors.green : Colors.grey,
-          ),
+              shape: BoxShape.circle,
+              color: _currentPageIndex == i ? Colors.green : Colors.white,
+              boxShadow: const [
+                BoxShadow(
+                    color: Color.fromARGB(255, 148, 148, 148),
+                    blurRadius: 2,
+                    offset: Offset(0, 3))
+              ]),
         ),
       );
     }
@@ -1820,17 +1966,6 @@ class _ImagesWondersState extends State<ImagesWonders> {
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
 class descriptionWidget extends StatefulWidget {
   const descriptionWidget({super.key, required this.wond});
   final Wonder wond;
@@ -1844,7 +1979,7 @@ class _descriptionWidgetState extends State<descriptionWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-        margin: const EdgeInsets.only(top: 10, bottom: 35),
+        margin: const EdgeInsets.only(top: 10, bottom: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1902,7 +2037,8 @@ class _CommentWidgetState extends State<CommentWidget> {
   }
 
   void _loadUser() async {
-    final Utilisateur? user = await Camwonder().getUserByUniqueId(widget.avis.user);
+    final Utilisateur? user =
+        await Camwonder().getUserByUniqueRealId(widget.avis.user);
     setState(() {
       if (user != null) {
         username = user.nom;
@@ -2056,8 +2192,6 @@ class _CommentWidgetState extends State<CommentWidget> {
   }
 }
 
-
-
 class GuideWidget extends StatefulWidget {
   const GuideWidget({
     super.key,
@@ -2082,7 +2216,6 @@ class _GuideWidgetState extends State<GuideWidget> {
     super.initState();
   }
 
-
   String truncate(String text) {
     if (text.length > 35) {
       return "${text.substring(0, 35)}...";
@@ -2105,34 +2238,41 @@ class _GuideWidgetState extends State<GuideWidget> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 85,
-      margin: EdgeInsets.only(left: 20, top: 5),
+      margin: const EdgeInsets.only(left: 10, top: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 110,
-                width: 110,
+                height: 100,
+                width: 100,
                 decoration: BoxDecoration(
                     color: Colors.grey,
                     borderRadius: BorderRadius.circular(10),
                     image: DecorationImage(
-                      image: NetworkImage(widget.guide.profilPath),
-                      fit: BoxFit.cover
-                    )),
+                        image: NetworkImage(widget.guide.profilPath),
+                        fit: BoxFit.cover)),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Center(
-                    child: Text(
-                      widget.guide.nom, textAlign: TextAlign.center,
-                      style: GoogleFonts.lalezar(
-                          textStyle: const TextStyle(fontSize: 15)),
-                    ),
+                  Text(
+                    widget.guide.nom,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.lalezar(
+                        textStyle: const TextStyle(fontSize: 13)),
                   ),
+                  Text(
+                    "Guide certifié",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.jura(
+                        textStyle: const TextStyle(fontSize: 10)),
+                  )
                 ],
               )
             ],
@@ -2142,9 +2282,6 @@ class _GuideWidgetState extends State<GuideWidget> {
     );
   }
 }
-
-
-
 
 class photoWonder extends StatelessWidget {
   final String path;
@@ -2285,7 +2422,6 @@ class _SimilairesListState extends State<SimilairesList> {
   }
 }
 
-
 class GuidesList extends StatefulWidget {
   const GuidesList({super.key, required this.wond, required this.size});
   final Wonder wond;
@@ -2300,20 +2436,15 @@ class _GuidesListState extends State<GuidesList> {
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
       stream: widget.wond.getGuide(),
-      builder: (BuildContext context,
-          AsyncSnapshot<QuerySnapshot> snapshot) {
+      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
         if (snapshot.hasError) {
           return const Text("Un problème est survenu");
         }
 
-        if (snapshot.connectionState ==
-            ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
           return const SingleChildScrollView(
             child: const Column(
-              children: [
-                CircularProgressIndicator(
-                    color: Color(0xff226900))
-              ],
+              children: [CircularProgressIndicator(color: Color(0xff226900))],
             ),
           );
         }
@@ -2321,19 +2452,18 @@ class _GuidesListState extends State<GuidesList> {
         if (snapshot.data!.docs.isEmpty) {
           return Center(
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    height: widget.size.height / 20,
-                    margin: const EdgeInsets.all(20),
-                    child: Theme.of(context).brightness ==
-                        Brightness.light
-                        ? Image.asset('assets/vide_light.png')
-                        : Image.asset('assets/vide_dark.png'),
-                  ),
-                  const Text("Aucun guide enregistré pour ce lieu !")
-                ],
-              ));
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                height: widget.size.height / 20,
+                margin: const EdgeInsets.all(20),
+                child: Theme.of(context).brightness == Brightness.light
+                    ? Image.asset('assets/vide_light.png')
+                    : Image.asset('assets/vide_dark.png'),
+              ),
+              const Text("Aucun guide enregistré pour ce lieu !")
+            ],
+          ));
         }
 
         return SizedBox(
@@ -2342,7 +2472,8 @@ class _GuidesListState extends State<GuidesList> {
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(), // Permet le défilement
             children: snapshot.data!.docs.map((DocumentSnapshot document) {
-              final Map<String, dynamic> data = document.data() as Map<String, dynamic>;
+              final Map<String, dynamic> data =
+                  document.data() as Map<String, dynamic>;
               final Guide guide = Guide(
                 id: document['id'],
                 numero: document['numero'],
@@ -2351,27 +2482,33 @@ class _GuidesListState extends State<GuidesList> {
                 profilPath: document['profilPath'],
               );
               return SizedBox(
-                width: 140,
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                        context,
-                        PageRouteBuilder(
-                            pageBuilder: (_, __, ___) => GuidesDetails(guide: guide),
-                            transitionsBuilder: (_, animation, __, child) {
-                              return SlideTransition(
-                                position: Tween<Offset>(
-                                    begin: const Offset(-1.0, 0.0),
-                                    end: Offset.zero)
-                                    .animate(CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeInOut,
-                                    reverseCurve: Curves.easeInOutBack)),
-                                child: child,
-                              );
-                            },
-                            transitionDuration:
-                            const Duration(milliseconds: 700)));
+                    if(widget.wond.free){
+                      Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                              pageBuilder: (_, __, ___) =>
+                                  GuidesDetails(guide: guide),
+                              transitionsBuilder: (_, animation, __, child) {
+                                return SlideTransition(
+                                  position: Tween<Offset>(
+                                      begin: const Offset(-1.0, 0.0),
+                                      end: Offset.zero)
+                                      .animate(CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeInOut,
+                                      reverseCurve: Curves.easeInOutBack)),
+                                  child: child,
+                                );
+                              },
+                              transitionDuration:
+                              const Duration(milliseconds: 700)));
+                    }else{
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) => SubscriptionPage()));
+                    }
+
                   },
                   child: GuideWidget(
                     size: widget.size,
@@ -2475,28 +2612,35 @@ class _EvenementListState extends State<EvenementList> {
                       date: document['date']);
                   return GestureDetector(
                     onTap: () {
-                      Navigator.push(
-                          context,
-                          PageRouteBuilder(
-                              pageBuilder: (_, __, ___) => EvenementDetails(
-                                  evenement: evenement, wond: widget.wond),
-                              transitionsBuilder: (_, animation, __, child) {
-                                return SlideTransition(
-                                  position: Tween<Offset>(
-                                          begin: const Offset(-1.0, 0.0),
-                                          end: Offset.zero)
-                                      .animate(CurvedAnimation(
-                                          parent: animation,
-                                          curve: Curves.easeInOut,
-                                          reverseCurve: Curves.easeInOutBack)),
-                                  child: child,
-                                );
-                              },
-                              transitionDuration:
-                                  const Duration(milliseconds: 700)));
+                      if(widget.wond.free){
+                        Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                                pageBuilder: (_, __, ___) => EvenementDetails(
+                                    evenement: evenement, wond: widget.wond),
+                                transitionsBuilder: (_, animation, __, child) {
+                                  return SlideTransition(
+                                    position: Tween<Offset>(
+                                        begin: const Offset(-1.0, 0.0),
+                                        end: Offset.zero)
+                                        .animate(CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeInOut,
+                                        reverseCurve: Curves.easeInOutBack)),
+                                    child: child,
+                                  );
+                                },
+                                transitionDuration:
+                                const Duration(milliseconds: 700)));
+                      }else{
+                        Navigator.push(context,
+                            MaterialPageRoute(builder: (context) => SubscriptionPage()));
+                      }
+
                     },
                     child: Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 15, left: 15),
+                      margin:
+                          const EdgeInsets.only(top: 10, bottom: 15, left: 15),
                       width: MediaQuery.of(context).size.width / 2,
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
@@ -2738,7 +2882,7 @@ class _ReviewModalState extends State<ReviewModal> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                if(_reviewController.text != ''){
+                if (_reviewController.text != '') {
                   widget.wond.addAvis(_reviewController.text, _rating);
                   Navigator.pop(context);
                 } else {
@@ -2758,7 +2902,6 @@ class _ReviewModalState extends State<ReviewModal> {
                     elevation: 0,
                   ));
                 }
-
               },
               child: const Text('Soumettre'),
             ),
@@ -2918,12 +3061,14 @@ class _ReservationModalModalState extends State<ReservationModal> {
                                     "Confirmation",
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.lalezar(
-                                        textStyle: const TextStyle(fontSize: 25)),
+                                        textStyle:
+                                            const TextStyle(fontSize: 25)),
                                   ),
                                   Text(
                                     "Confirmez la reservation du lieu : ${widget.wond.wonderName}",
                                     style: GoogleFonts.jura(
-                                        textStyle: const TextStyle(fontSize: 15)),
+                                        textStyle:
+                                            const TextStyle(fontSize: 15)),
                                   ),
                                 ],
                               ),
@@ -2978,33 +3123,3 @@ class _ReservationModalModalState extends State<ReservationModal> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

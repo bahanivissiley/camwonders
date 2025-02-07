@@ -1,19 +1,16 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camwonders/auth_pages/debut_inscription.dart';
 import 'package:camwonders/class/Notification.dart';
 import 'package:camwonders/class/Utilisateur.dart';
-import 'package:camwonders/services/cachemanager.dart';
+import 'package:camwonders/pages/NotificationsPage.dart';
+import 'package:camwonders/pages/test.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
-import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
+import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hive/hive.dart';
-import 'package:hive_flutter/adapters.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -26,11 +23,6 @@ class Menu extends StatefulWidget{
 }
 
 class _MenuState extends State<Menu> {
-  final List<Widget> pages = [
-    ListeVue(),
-    const MapVue(),
-  ];
-
   static const verte = Color(0xff226900);
   late PageController _pageController;
 
@@ -41,26 +33,27 @@ class _MenuState extends State<Menu> {
   String? _error;
   String _city = "CAMEROUN";
 
-  late Box<NotificationItem> notificationBox;
+  List<Widget> pages = [
+    ListeVue(),
+    const MapVue(),
+  ];
+
 
   @override
   void initState() {
     super.initState();
-    notificationBox = Hive.box<NotificationItem>('notificationItems');
     _pageController = PageController(initialPage: _currentPageIndex);
     loadData();
     _fetchUserInfo();
-    loadNotifications();
 
   }
 
-  void loadNotifications() async {
 
-  }
+
 
   Future<void> _fetchUserInfo() async {
     try {
-      Utilisateur user = await Camwonder().getUserInfo();
+      final Utilisateur user = await Camwonder().getUserInfo();
       setState(() {
         _user = user;
         _isLoading = false;
@@ -144,8 +137,8 @@ class _MenuState extends State<Menu> {
 
   Future<String> _getAddressFromLatLng(Position position) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-      Placemark place = placemarks[0];
+      final List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      final Placemark place = placemarks[0];
       return "${place.country}";
     } catch (e) {
       return "Impossible d'obtenir l'adresse.";
@@ -155,8 +148,8 @@ class _MenuState extends State<Menu> {
 
   Future<void> _getUserCity() async {
     try {
-      Position position = await _getUserLocation();
-      String city = await _getAddressFromLatLng(position);
+      final Position position = await _getUserLocation();
+      final String city = await _getAddressFromLatLng(position);
       setState(() {
         _city = city;
       });
@@ -169,8 +162,8 @@ class _MenuState extends State<Menu> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    double width = size.width;
+    final Size size = MediaQuery.of(context).size;
+    final double width = size.width;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -216,6 +209,10 @@ class _MenuState extends State<Menu> {
                   },
                   transitionDuration: const Duration(milliseconds: 500)
                   ));
+
+                 Provider.of<NotificationProvider>(context, listen: false)
+                     .addNotification("Nouvelle alerte", "Vous avez reçu un message !");
+
               },
               child: Container(
                 padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -233,168 +230,54 @@ class _MenuState extends State<Menu> {
               ),
             )
           ) : Container(),
-
-
+          
           Container(
-          margin: const EdgeInsets.only(right: 10),
-          child: Stack(
-            alignment: Alignment.centerRight,
-            children: [
+            child: Consumer<NotificationProvider>(
+              builder: (context, notificationProvider, _) {
+                int unreadCount = notificationProvider.notifications
+                    .where((notif) => !notif.isOpened)
+                    .length;
 
-          PopupMenuButton<String>(
-          icon: const Icon(LucideIcons.bell),
-            itemBuilder: (BuildContext context) {
-              final Box<NotificationItem> box = notificationBox;
-
-              if (box.values.isEmpty) {
-                return [
-                  PopupMenuItem<String>(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height / 10,
-                            child: Theme.of(context).brightness == Brightness.light
-                                ? Image.asset('assets/vide_light.png')
-                                : Image.asset('assets/vide_dark.png'),
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: Icon(LucideIcons.bellDot, size: 25,),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => NotificationsPage(),
                           ),
-                          const Text("Pas de notifications"),
-                        ],
-                      ),
+                        );
+                      },
                     ),
-                  ),
-                ];
-              }
-
-              // Trier les notifications par date décroissante
-              final sortedNotifications = box.values.toList()
-                ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-              return sortedNotifications.map<PopupMenuItem<String>>((NotificationItem notification) {
-                return PopupMenuItem<String>(
-                  value: notification.title,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      children: [
-                        // Image container
-                        Container(
-                          height: MediaQuery.of(context).size.width / 8,
-                          width: MediaQuery.of(context).size.width / 8,
-                          margin: const EdgeInsets.only(right: 12.0),
+                    if (unreadCount > 0) // Affiche le badge uniquement si non lues
+                      Positioned(
+                        right: 8,
+                        top: 2,
+                        child: Container(
+                          padding: EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(11.0),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4.0,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            color: Colors.amber,
+                            shape: BoxShape.circle,
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(11.0),
-                            child: CachedNetworkImage(
-                              cacheManager: CustomCacheManager(),
-                              imageUrl: notification.image,
-                              placeholder: (context, url) => Center(
-                                child: shimmerOffre(
-                                  width: MediaQuery.of(context).size.width / 6,
-                                  height: MediaQuery.of(context).size.width / 6,
-                                ),
-                              ),
-                              errorWidget: (context, url, error) => const Center(
-                                child: Icon(Icons.error, color: Colors.red),
-                              ),
-                              fit: BoxFit.cover,
+                          child: Text(
+                            unreadCount.toString(),
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-
-                        // Text content
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                notification.title,
-                                style: TextStyle(
-                                  fontSize: 16.0,
-                                  fontWeight: notification.read ? FontWeight.normal : FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4.0),
-                              Text(
-                                notification.message,
-                                style: TextStyle(
-                                  fontSize: 14.0,
-                                  fontWeight: notification.read ? FontWeight.normal : FontWeight.bold,
-                                  color: Colors.black54,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                  ],
                 );
-              }).toList();
-            },
-            onSelected: (String notificationTitle) {
-              final Box<NotificationItem> box = notificationBox;
-              final NotificationItem notification = box.values.firstWhere(
-                    (item) => item.title == notificationTitle,
-              );
-
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: Text(notification.title),
-                    content: Text(notification.message),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          // Marquer comme lu
-                          notification.read = true;
-                          box.put(notification.title, notification);
-                          setState(() {}); // Rafraîchir l'interface
-                          Navigator.pop(context);
-                        },
-                        child: const Text("Marquer comme lu"),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text("Retour"),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
+              },
+            ),
           ),
 
 
-              notificationBox.length > 0 ? Container(
-                margin: const EdgeInsets.only(bottom: 15, right: 5),
-                padding: EdgeInsets.fromLTRB(6, 1, 6, 1),
-                decoration: BoxDecoration(
-                  color: verte,
-                  borderRadius: BorderRadius.circular(10)
-                ),
-                child: Text(notificationBox.length.toString(), style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 12, color: Colors.white)),))
-                : SizedBox()
-            ],
-          ),
-          ),
         ],
       ),
 
@@ -410,7 +293,7 @@ class _MenuState extends State<Menu> {
   Column menu(double width) {
     return Column(
           children: [
-        
+
             Container(
               padding: const EdgeInsets.only(top: 20, bottom: 5),
               //height: height/10,
@@ -435,7 +318,7 @@ class _MenuState extends State<Menu> {
                       child: Text("Mode liste", style: GoogleFonts.jura(textStyle: TextStyle(fontWeight: FontWeight.bold, color: _currentPageIndex == 0 ? verte : null)),),
                     ),
                   ),
-              
+
                   Container(
                     width: 2,
                     height: 20,
@@ -444,7 +327,7 @@ class _MenuState extends State<Menu> {
                       ),
                     ),
                   ),
-              
+
                   GestureDetector(
                     onTap: (){
                       goToNextPage();
@@ -464,10 +347,11 @@ class _MenuState extends State<Menu> {
                 ],
               ),
             ),
-        
+
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (int pageIndex){
                   _pageController.animateToPage(
                   pageIndex,

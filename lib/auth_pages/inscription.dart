@@ -51,47 +51,26 @@ class _InscriptionState extends State<Inscription> {
       heightgif = height;
     });
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          child: Container(
-            height: 780,
-            padding: EdgeInsets.only(top: height/8),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          Container(
+            padding: EdgeInsets.all(50),
+            margin: EdgeInsets.only(top: height/5),
+            child: Image.asset("assets/load2.png"),
+          ),
+          Container(
+            margin: EdgeInsets.all(30),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  children: [
-                    Text("Camwonders", style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 40, color: verte), ),),
-                    Container(
-                      padding: EdgeInsets.only(top: height/200),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text("👋Bienvenue", style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 30)),),
-                          SizedBox(
-                            width: size.width*2/3,
-                            child: Center(child: Text("Commencez par vous inscrire pour garder une trace de vos activites", textAlign: TextAlign.center, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 15)),))),
-                        ],
-                        )
-                      ),
-
-                    AnimatedContainer(
-                      duration: const Duration(seconds: 1),
-                      curve: Curves.fastOutSlowIn,
-                      margin: EdgeInsets.only(top:height/15),
-                      padding: EdgeInsets.fromLTRB(su, 20, su, 20),
-                      width: height/2-30,
-                      child: Image.asset(
-                            'assets/locategirl.png',
-                            ),
-                    ),
-                  ],
-                ),
-
+                Center(child: Text("Decouvrez le cameroun dans toute sa splendeur", textAlign: TextAlign.center, style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 30, height: 1.3)),)),
+                SizedBox(height: 20,),
+                Center(child: Text("Vous rêvez d’explorer des paysages époustouflants, de plonger dans des cultures riches ? Camwonders est là pour transformer votre expérience de voyage.", textAlign: TextAlign.center, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12)),)),
               ],
             ),
-          ),
-        ),
+          )
+        ],
       ),
     
     bottomNavigationBar:

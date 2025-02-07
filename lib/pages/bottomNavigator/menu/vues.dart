@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:camwonders/class/Utilisateur.dart';
+import 'package:camwonders/pages/AbonnementPage.dart';
 import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/class/Categorie.dart';
@@ -10,6 +12,7 @@ import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/pages/page_categorie.dart';
 import 'package:camwonders/pages/storie.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
+import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +22,7 @@ import 'package:gif/gif.dart';
 //import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:latlong2/latlong.dart' as latLng;
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
@@ -146,6 +150,7 @@ class _ListeVueState extends State<ListeVue> {
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
     final double width = size.width;
+    final userProvider = Provider.of<UserProvider>(context);
     return SingleChildScrollView(
       child: SizedBox(
         child: Column(
@@ -482,25 +487,33 @@ class _ListeVueState extends State<ListeVue> {
                             categorie: document['categorie'],
                             isreservable: document['isreservable']);
                         return GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            PageRouteBuilder(
-                                pageBuilder: (context, animation,
-                                    secondaryAnimation) =>
-                                    wonder_page(wond: wond),
-                                transitionDuration:
-                                const Duration(milliseconds: 500),
-                                transitionsBuilder: (context, animation,
-                                    secondaryAnimation, child) {
-                                  animation = CurvedAnimation(
-                                      parent: animation,
-                                      curve: Curves.easeIn);
-                                  return FadeTransition(
-                                    opacity: animation,
-                                    child: child,
-                                  );
-                                }),
-                          ),
+                          onTap: () {
+                            print(userProvider.isPremium);
+                            if(userProvider.isPremium || wond.free){
+                              Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                    pageBuilder: (context, animation,
+                                        secondaryAnimation) =>
+                                        wonder_page(wond: wond),
+                                    transitionDuration:
+                                    const Duration(milliseconds: 500),
+                                    transitionsBuilder: (context, animation,
+                                        secondaryAnimation, child) {
+                                      animation = CurvedAnimation(
+                                          parent: animation,
+                                          curve: Curves.easeIn);
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      );
+                                    }),
+                              );
+                            }else{
+                              Navigator.push(context,
+                                  MaterialPageRoute(builder: (context) => SubscriptionPage()));
+                            }
+                          },
                           child: isLoading
                               ? shimmerWonder(
                             width: size.width,
@@ -578,7 +591,9 @@ class catButton extends StatelessWidget {
             height: 35,
             margin: const EdgeInsets.only(right: 10),
             decoration: BoxDecoration(
-              color: cat.statut ? rang == select_cat ? verte : Colors.white : Colors.grey.shade100,
+              color: cat.statut ? rang == select_cat ? verte : Theme.of(context).brightness ==
+                  Brightness.light ? Colors.white : Colors.transparent : Theme.of(context).brightness ==
+                  Brightness.light ? Colors.grey.shade100 : Colors.transparent,
                 borderRadius: BorderRadius.circular(200),
                 border: Border.all(
                     width: 1.0, color: cat.statut ? Colors.grey.withOpacity(0.5) : Colors.grey.withOpacity(0))),
@@ -590,7 +605,8 @@ class catButton extends StatelessWidget {
                 Text(
                   cat.categoryName,
                   style: GoogleFonts.jura(
-                      color: cat.statut ? rang == select_cat ? Colors.white : Colors.black : Colors.grey,
+                      color: cat.statut ? rang == select_cat ? Colors.white : Theme.of(context).brightness ==
+                          Brightness.light ? Colors.black : Colors.white : Colors.grey,
                       textStyle: const TextStyle(
                           fontSize: 11, fontWeight: FontWeight.bold)),
                 )
@@ -993,7 +1009,7 @@ class shimmerMaps extends StatelessWidget {
           child: Center(
             child: Gif(
               height: 100,
-              image: const AssetImage("assets/loadmap.gif"),
+              image: const AssetImage("assets/load.gif"),
               autostart: Autostart.loop,
               placeholder: (context) => const Text('Loading...'),
             ),

@@ -107,7 +107,7 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
                                     style: GoogleFonts.jura(textStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, decoration: TextDecoration.underline, color: isChecked ? Colors.black : Colors.red)),
                                     recognizer: TapGestureRecognizer()
                                     ..onTap = () {
-                                      Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => const policies(),
+                                      Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => const Policies(),
                                       transitionsBuilder: (_,animation, __, child){
                                           return SlideTransition(
                                             position: Tween<Offset> (begin: const Offset(1.0, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut, reverseCurve: Curves.easeInOutBack)),
@@ -150,7 +150,7 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
                                             children: [
                                               Gif(
                                                   height: 100,
-                                                  image: const AssetImage("assets/load1.gif"),
+                                                  image: const AssetImage("assets/load.gif"),
                                                   autostart: Autostart.loop,
                                               ),
 
@@ -180,7 +180,7 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
                                               children: [
                                                 Gif(
                                                     height: 100,
-                                                    image: const AssetImage("assets/succes1.gif"),
+                                                    image: const AssetImage("assets/succes.gif"),
                                                     autostart: Autostart.loop,
                                                 ),
                                         
