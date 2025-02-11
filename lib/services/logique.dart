@@ -2,7 +2,6 @@ import 'package:camwonders/class/Wonder.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
-import 'package:http/http.dart' as http;
 
 class Logique {
   late Box<Wonder> favorisBox;

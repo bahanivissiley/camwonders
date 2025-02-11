@@ -1,11 +1,7 @@
-
-
-import 'package:camwonders/class/Utilisateur.dart';
-import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/class/classes.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
-import 'package:camwonders/services/camwonders.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 class WonderShort{
   final String idWonderShort;
@@ -39,7 +35,7 @@ class WonderShort{
   }
 
   Future<int?> getLikes() async{
-    DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
+    final DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
         .collection('wondershorts')
         .doc(idWonderShort)
         .get();
@@ -51,8 +47,8 @@ class WonderShort{
   }
 
   Future<void> setLike() async {
-    int? likeactu = await getLikes();
-    int likeUpdate = likeactu! + 1;
+    final int? likeactu = await getLikes();
+    final int likeUpdate = likeactu! + 1;
     await FirebaseFirestore.instance
         .collection('wondershorts')
         .doc(idWonderShort)
@@ -60,8 +56,8 @@ class WonderShort{
   }
 
   Future<void> disLike() async {
-    int? likeactu = await getLikes();
-    int likeUpdate = likeactu! - 1;
+    final int? likeactu = await getLikes();
+    final int likeUpdate = likeactu! - 1;
     await FirebaseFirestore.instance
         .collection('wondershorts')
         .doc(idWonderShort)
@@ -70,7 +66,7 @@ class WonderShort{
 
 
   Future<int?> getVues() async{
-    DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
+    final DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
         .collection('wondershorts')
         .doc(idWonderShort)
         .get();
@@ -82,8 +78,8 @@ class WonderShort{
   }
 
   Future<void> setVues() async {
-    int? likeactu = await getLikes();
-    int likeUpdate = likeactu! + 1;
+    final int? likeactu = await getLikes();
+    final int likeUpdate = likeactu! + 1;
     await FirebaseFirestore.instance
         .collection('wondershorts')
         .doc(idWonderShort)
@@ -92,8 +88,8 @@ class WonderShort{
 
 
   Future<void> addCommentaire(String content) async {
-    Comment comment = Comment(idComment: "genere", content: content, wondershort: idWonderShort, user: AuthService().currentUser!.uid);
-    CollectionReference commentaire = FirebaseFirestore.instance.collection('commentaires');
+    final Comment comment = Comment(idComment: "genere", content: content, wondershort: idWonderShort, user: AuthService().currentUser!.uid);
+    final CollectionReference commentaire = FirebaseFirestore.instance.collection('commentaires');
 
 
     return commentaire
@@ -102,8 +98,16 @@ class WonderShort{
       'wondershort': comment.wondershort,
       'user': comment.user,
     })
-        .then((value) => print("Commentaire ajouté"))
-        .catchError((error) => print("Commentaire pas ajouté: $error"));
+        .then((value) {
+      if (kDebugMode) {
+        print("Comment Added");
+      }
+    })
+        .catchError((error) {
+      if (kDebugMode) {
+        print("Failed to add comment: $error");
+      }
+    });
   }
 
   Stream<QuerySnapshot> getCommentaires() {

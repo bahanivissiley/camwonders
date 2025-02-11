@@ -1,25 +1,19 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/pages/AbonnementPage.dart';
 import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/class/Categorie.dart';
-import 'package:camwonders/class/Offre.dart';
 import 'package:camwonders/class/Wonder.dart';
-import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/pages/page_categorie.dart';
 import 'package:camwonders/pages/storie.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:gif/gif.dart';
-//import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +22,7 @@ import 'package:latlong2/latlong.dart' as latLng;
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 
 class ListeVue extends StatefulWidget {
-  ListeVue({super.key});
+  const ListeVue({super.key});
   static const verte = Color(0xff226900);
 
   @override
@@ -154,14 +148,12 @@ class _ListeVueState extends State<ListeVue> {
     return SingleChildScrollView(
       child: SizedBox(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.only(left: 20, top: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Icon(
                     LucideIcons.gem,
@@ -181,7 +173,7 @@ class _ListeVueState extends State<ListeVue> {
               ),
             ),
 
-            Container(
+            SizedBox(
               height: 200,
               child: StreamBuilder<QuerySnapshot>(
                 stream: _offres,
@@ -254,7 +246,7 @@ class _ListeVueState extends State<ListeVue> {
                                     height: 200,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(15),
-                                      color: Colors.black.withOpacity(0.5),
+                                      color: Colors.black.withValues(alpha:0.5),
                                     ),
                                   ),
                                   Padding(
@@ -345,7 +337,6 @@ class _ListeVueState extends State<ListeVue> {
               padding: const EdgeInsets.only(left: 20, top: 15),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Icon(
                     LucideIcons.bookOpen,
@@ -424,106 +415,104 @@ class _ListeVueState extends State<ListeVue> {
               ),
             ),
 
-            Container(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: listewonderscat,
-                builder: (BuildContext context,
-                    AsyncSnapshot<QuerySnapshot> snapshot) {
-                  if (snapshot.hasError) {
-                    return const Text('Something went wrong');
-                  }
+            StreamBuilder<QuerySnapshot>(
+              stream: listewonderscat,
+              builder: (BuildContext context,
+                  AsyncSnapshot<QuerySnapshot> snapshot) {
+                if (snapshot.hasError) {
+                  return const Text('Something went wrong');
+                }
 
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return SingleChildScrollView(
+                if (snapshot.connectionState ==
+                    ConnectionState.waiting) {
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        shimmerWonder(width: size.width),
+                        shimmerWonder(width: size.width),
+                      ],
+                    ),
+                  );
+                }
+
+                if (snapshot.data!.docs.isEmpty) {
+                  return Center(
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          shimmerWonder(width: size.width),
-                          shimmerWonder(width: size.width),
+                          Container(
+                            height: size.height / 10,
+                            margin: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(30),
+                            child: Theme.of(context).brightness ==
+                                Brightness.light
+                                ? Image.asset('assets/vide_light.png')
+                                : Image.asset('assets/vide_dark.png'),
+                          ),
+                          const Text("Vide, aucun element !")
                         ],
-                      ),
-                    );
-                  }
+                      ));
+                }
 
-                  if (snapshot.data!.docs.isEmpty) {
-                    return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              height: size.height / 10,
-                              margin: const EdgeInsets.all(10),
-                              padding: const EdgeInsets.all(30),
-                              child: Theme.of(context).brightness ==
-                                  Brightness.light
-                                  ? Image.asset('assets/vide_light.png')
-                                  : Image.asset('assets/vide_dark.png'),
-                            ),
-                            const Text("Vide, aucun element !")
-                          ],
-                        ));
-                  }
-
-                  return ListView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: snapshot.data!.docs.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final DocumentSnapshot document =
-                        snapshot.data!.docs[index];
-                        final Wonder wond = Wonder(
-                            idWonder: document.id,
-                            wonderName: document['wonderName'],
-                            description: document['description'],
-                            imagePath: document['imagePath'],
-                            city: document['city'],
-                            region: document['region'],
-                            free: document['free'],
-                            price: document['price'],
-                            horaire: document['horaire'],
-                            latitude: document['latitude'],
-                            longitude: document['longitude'],
-                            note: (document['note'] as num).toDouble(),
-                            categorie: document['categorie'],
-                            isreservable: document['isreservable']);
-                        return GestureDetector(
-                          onTap: () {
-                            print(userProvider.isPremium);
-                            if(userProvider.isPremium || wond.free){
-                              Navigator.push(
-                                context,
-                                PageRouteBuilder(
-                                    pageBuilder: (context, animation,
-                                        secondaryAnimation) =>
-                                        wonder_page(wond: wond),
-                                    transitionDuration:
-                                    const Duration(milliseconds: 500),
-                                    transitionsBuilder: (context, animation,
-                                        secondaryAnimation, child) {
-                                      animation = CurvedAnimation(
-                                          parent: animation,
-                                          curve: Curves.easeIn);
-                                      return FadeTransition(
-                                        opacity: animation,
-                                        child: child,
-                                      );
-                                    }),
-                              );
-                            }else{
-                              Navigator.push(context,
-                                  MaterialPageRoute(builder: (context) => SubscriptionPage()));
-                            }
-                          },
-                          child: isLoading
-                              ? shimmerWonder(
-                            width: size.width,
-                          )
-                              : wonderWidget(
-                              size: size, wonderscat: wond),
-                        );
-                      });
-                },
-              ),
+                return ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: snapshot.data!.docs.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final DocumentSnapshot document =
+                      snapshot.data!.docs[index];
+                      final Wonder wond = Wonder(
+                          idWonder: document.id,
+                          wonderName: document['wonderName'],
+                          description: document['description'],
+                          imagePath: document['imagePath'],
+                          city: document['city'],
+                          region: document['region'],
+                          free: document['free'],
+                          price: document['price'],
+                          horaire: document['horaire'],
+                          latitude: document['latitude'],
+                          longitude: document['longitude'],
+                          note: (document['note'] as num).toDouble(),
+                          categorie: document['categorie'],
+                          isreservable: document['isreservable'],
+                          acces: document['acces']);
+                      return GestureDetector(
+                        onTap: () {
+                          if(userProvider.isPremium || wond.free){
+                            Navigator.push(
+                              context,
+                              PageRouteBuilder(
+                                  pageBuilder: (context, animation,
+                                      secondaryAnimation) =>
+                                      WonderPage(wond: wond),
+                                  transitionDuration:
+                                  const Duration(milliseconds: 500),
+                                  transitionsBuilder: (context, animation,
+                                      secondaryAnimation, child) {
+                                    animation = CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeIn);
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    );
+                                  }),
+                            );
+                          }else{
+                            Navigator.push(context,
+                                MaterialPageRoute(builder: (context) => SubscriptionPage()));
+                          }
+                        },
+                        child: isLoading
+                            ? shimmerWonder(
+                          width: size.width,
+                        )
+                            : WonderWidget(
+                            size: size, wonderscat: wond),
+                      );
+                    });
+              },
             ),
 
             Container(
@@ -536,7 +525,7 @@ class _ListeVueState extends State<ListeVue> {
                         Navigator.push(
                             context,
                             PageRouteBuilder(
-                                pageBuilder: (_, __, ___) => page_categorie(cat: cats[select_cat]),
+                                pageBuilder: (_, __, ___) => PageCategorie(cat: cats[select_cat]),
                                 transitionsBuilder: (_, animation, __, child) {
                                   return SlideTransition(
                                     position: Tween<Offset>(
@@ -596,7 +585,7 @@ class catButton extends StatelessWidget {
                   Brightness.light ? Colors.grey.shade100 : Colors.transparent,
                 borderRadius: BorderRadius.circular(200),
                 border: Border.all(
-                    width: 1.0, color: cat.statut ? Colors.grey.withOpacity(0.5) : Colors.grey.withOpacity(0))),
+                    color: cat.statut ? Colors.grey.withValues(alpha:0.5) : Colors.grey.withValues(alpha:0))),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -630,7 +619,6 @@ class StoriesList extends StatefulWidget {
 class _StoriesListState extends State<StoriesList> {
   final ScrollController _controller = ScrollController();
   final double _height = 200.0;
-  final double _width = 150.0;
 
   bool isLoading = false;
 
@@ -657,29 +645,16 @@ class _StoriesListState extends State<StoriesList> {
     }
   }
 
-  // Largeur de chaque élément dans la liste
-  void _animateToIndex(int index) {
-    double offset = index * _width;
-    if (_controller.hasClients) {
-      offset = offset - (_controller.position.viewportDimension - _width) / 2;
-      _controller.animateTo(
-        offset,
-        duration: const Duration(seconds: 2),
-        curve: Curves.fastOutSlowIn,
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
+    final userProvider = Provider.of<UserProvider>(context);
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.only(left: 20, bottom: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const Icon(
                 LucideIcons.heart,
@@ -711,16 +686,14 @@ class _StoriesListState extends State<StoriesList> {
                     }
 
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return SingleChildScrollView(
+                      return const SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        child: Container(
-                          child: const Row(
-                            children: [
-                              shimmerStorie(),
-                              shimmerStorie(),
-                              shimmerStorie()
-                            ],
-                          ),
+                        child: Row(
+                          children: [
+                            shimmerStorie(),
+                            shimmerStorie(),
+                            shimmerStorie()
+                          ],
                         ),
                       );
                     }
@@ -766,10 +739,12 @@ class _StoriesListState extends State<StoriesList> {
                             note: (document['note'] as num).toDouble(),
                             categorie: document['categorie'],
                             isreservable: document['isreservable'],
+                              acces: document['acces']
                           );
                           return GestureDetector(
                             onTap: () {
-                              Navigator.push(
+
+                              (userProvider.isPremium || wond.free) ? Navigator.push(
                                   context,
                                   PageRouteBuilder(
                                     pageBuilder: (context, animation,
@@ -785,7 +760,8 @@ class _StoriesListState extends State<StoriesList> {
                                         child: child,
                                       );
                                     },
-                                  ));
+                                  )) : Navigator.push(context,
+                                  MaterialPageRoute(builder: (context) => SubscriptionPage()));
                             },
                             child: isLoading
                                 ? const shimmerStorie()
@@ -841,6 +817,7 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     return Container(
       width: 145,
       height: 200,
@@ -869,6 +846,18 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
                 ),
               ),
             ),
+            (userProvider.isPremium || wond.free)
+                ? const SizedBox()  // Un widget vide au lieu d'un Center inutile
+                : Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.black.withValues(alpha:0.6),
+              ),
+              height: 200,
+              width: 140,
+
+              child: const Icon(Icons.lock, size: 70, color: Colors.white),
+            ),
             Container(
                 margin: const EdgeInsets.all(5),
                 padding: const EdgeInsets.all(8),
@@ -879,8 +868,8 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        const Color.fromARGB(255, 0, 0, 0).withOpacity(0.8),
-                        const Color.fromARGB(255, 0, 0, 0).withOpacity(0.0),
+                        const Color.fromARGB(255, 0, 0, 0).withValues(alpha:0.8),
+                        const Color.fromARGB(255, 0, 0, 0).withValues(alpha:0.0),
                       ]),
                 ),
                 child: Column(
@@ -891,7 +880,7 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            "${truncate(widget.wond.wonderName)}",
+                            truncate(widget.wond.wonderName),
                             maxLines: 1,
                             style: GoogleFonts.lalezar(
                                 textStyle: const TextStyle(
@@ -1004,15 +993,12 @@ class shimmerMaps extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10)),
           ),
         ),
-        Container(
-          //padding: EdgeInsets.fromLTRB(50, 0, 50, 0),
-          child: Center(
-            child: Gif(
-              height: 100,
-              image: const AssetImage("assets/load.gif"),
-              autostart: Autostart.loop,
-              placeholder: (context) => const Text('Loading...'),
-            ),
+        Center(
+          child: Gif(
+            height: 100,
+            image: const AssetImage("assets/load.gif"),
+            autostart: Autostart.loop,
+            placeholder: (context) => const Text('Loading...'),
           ),
         ),
       ],
@@ -1069,8 +1055,6 @@ class _mapsState extends State<maps> {
                   padding: const EdgeInsets.all(50),
                   maxZoom: 13,
                   markers: snapshot.data!.docs.map((DocumentSnapshot document) {
-                    final Map<String, dynamic> data =
-                        document.data() as Map<String, dynamic>;
                     final Wonder wond = Wonder(
                         idWonder: document.id,
                         wonderName: document['wonderName'],
@@ -1085,7 +1069,8 @@ class _mapsState extends State<maps> {
                         longitude: document['longitude'],
                         note: (document['note'] as num).toDouble(),
                         categorie: document['categorie'],
-                        isreservable: document['isreservable']);
+                        isreservable: document['isreservable'],
+                        acces: document['acces']);
                     return Marker(
                       point: latLng.LatLng(double.parse(wond.latitude),
                           double.parse(wond.longitude)),
@@ -1133,6 +1118,7 @@ class WonderMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     return GestureDetector(
       onTap: () {
         showDialog(
@@ -1147,21 +1133,38 @@ class WonderMarker extends StatelessWidget {
                       BoxDecoration(borderRadius: BorderRadius.circular(15)),
                   child: Row(
                     children: [
-                      Container(
-                        height: 170,
-                        width: 120,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: CachedNetworkImage(
-                            cacheManager: CustomCacheManager(),
-                            imageUrl: wonder.imagePath,
-                            placeholder: (context, url) => const Center(
-                                child: shimmerOffre(width: 120, height: 170)),
-                            errorWidget: (context, url, error) =>
-                                const Center(child: Icon(Icons.error)),
-                            fit: BoxFit.cover,
+                      Stack(
+                        children: [
+                          SizedBox(
+                            height: 170,
+                            width: 120,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: CachedNetworkImage(
+                                cacheManager: CustomCacheManager(),
+                                imageUrl: wonder.imagePath,
+                                placeholder: (context, url) => const Center(
+                                    child: shimmerOffre(width: 120, height: 170)),
+                                errorWidget: (context, url, error) =>
+                                    const Center(child: Icon(Icons.error)),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
-                        ),
+
+                          (userProvider.isPremium || wonder.free)
+                              ? const SizedBox()  // Un widget vide au lieu d'un Center inutile
+                              : Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              color: Colors.black.withValues(alpha:0.6),
+                            ),
+                            height: 170,
+                            width: 120,
+
+                            child: const Icon(Icons.lock, size: 100, color: Colors.white),
+                          ),
+                        ],
                       ),
 
                       //SizedBox(width: 10,),
@@ -1182,7 +1185,6 @@ class WonderMarker extends StatelessWidget {
                               children: [
                                 Row(
                                   children: [
-                                    // Pleines étoiles
                                     Row(
                                       children: List.generate(
                                         wonder.note.floor(),
@@ -1284,10 +1286,10 @@ class WonderMarker extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            Container(
+                            SizedBox(
                                 width: 150,
                                 child: Text(
-                                  "Ce lieu est situé à 24km de votre position",
+                                  "Ce lieu se situe dans la région de ${wonder.region}",
                                   style: GoogleFonts.jura(
                                       textStyle: const TextStyle(
                                           fontSize: 10,
@@ -1296,11 +1298,21 @@ class WonderMarker extends StatelessWidget {
                             SizedBox(
                               height: 30,
                               child: ElevatedButton(
-                                  onPressed: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (BuildContext context) =>
-                                              wonder_page(wond: wonder))),
+                                  onPressed: () {
+                                    if(userProvider.isPremium || wonder.free){
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (BuildContext context) =>
+                                                  WonderPage(wond: wonder)));
+                                    }else{
+                                      Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (BuildContext context) =>
+                                                  SubscriptionPage()));
+                                    }
+                                  },
                                   child: const Text("Découvrir")),
                             )
                           ],

@@ -5,16 +5,11 @@ import 'package:camwonders/pages/bottomNavigator/menu/menu.dart';
 import 'package:camwonders/pages/bottomNavigator/profil.dart';
 import 'package:camwonders/pages/bottomNavigator/wondershort.dart';
 import 'package:flutter/material.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
-//import 'package:flutter/widgets.dart';
-//import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-//import 'package:lucide_icons/lucide_icons.dart';
 
 class MainApp extends StatefulWidget {
-  MainApp({super.key});
+  const MainApp({super.key});
 
   @override
   State<MainApp> createState() => _MainAppState();
@@ -25,9 +20,9 @@ class _MainAppState extends State<MainApp> {
   static const verte = Color(0xff226900);
   DateTime? lastPressed;
   final List<Widget> _pages = [
-    Menu(),
+    const Menu(),
     const reservations(),
-    Wondershort(),
+    const Wondershort(),
     const page_favoris(),
     const Profil()
   ];
@@ -110,7 +105,7 @@ class _MainAppState extends State<MainApp> {
                                 borderRadius: BorderRadius.circular(5),
                                 color: Theme.of(context).brightness ==
                                         Brightness.light
-                                    ? Colors.grey.withOpacity(0.3)
+                                    ? Colors.grey.withValues(alpha:0.3)
                                     : const Color.fromARGB(255, 56, 56, 56),
                               )
                             : null,
@@ -151,7 +146,7 @@ class _MainAppState extends State<MainApp> {
                                 borderRadius: BorderRadius.circular(5),
                                 color: Theme.of(context).brightness ==
                                         Brightness.light
-                                    ? Colors.grey.withOpacity(0.3)
+                                    ? Colors.grey.withValues(alpha:0.3)
                                     : const Color.fromARGB(255, 56, 56, 56),
                               )
                             : null,
@@ -192,7 +187,7 @@ class _MainAppState extends State<MainApp> {
                                 borderRadius: BorderRadius.circular(5),
                                 color: Theme.of(context).brightness ==
                                         Brightness.light
-                                    ? Colors.grey.withOpacity(0.3)
+                                    ? Colors.grey.withValues(alpha:0.3)
                                     : const Color.fromARGB(255, 56, 56, 56),
                               )
                             : null,
@@ -233,7 +228,7 @@ class _MainAppState extends State<MainApp> {
                                 borderRadius: BorderRadius.circular(5),
                                 color: Theme.of(context).brightness ==
                                         Brightness.light
-                                    ? Colors.grey.withOpacity(0.3)
+                                    ? Colors.grey.withValues(alpha:0.3)
                                     : const Color.fromARGB(255, 56, 56, 56),
                               )
                             : null,
@@ -274,7 +269,7 @@ class _MainAppState extends State<MainApp> {
                                 borderRadius: BorderRadius.circular(5),
                                 color: Theme.of(context).brightness ==
                                         Brightness.light
-                                    ? Colors.grey.withOpacity(0.3)
+                                    ? Colors.grey.withValues(alpha:0.3)
                                     : const Color.fromARGB(255, 56, 56, 56),
                               )
                             : null,

@@ -17,10 +17,10 @@ import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
-import 'package:gif/gif.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:latlong2/latlong.dart';
@@ -30,40 +30,36 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart' as latLng;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:open_route_service/open_route_service.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_view/photo_view.dart';
 
-class wonder_page extends StatefulWidget {
+class WonderPage extends StatefulWidget {
   final Wonder wond;
 
-  const wonder_page({super.key, required this.wond});
+  const WonderPage({super.key, required this.wond});
 
   @override
-  State<wonder_page> createState() => _wonder_pageState(wond: wond);
+  State<WonderPage> createState() => _WonderPageState();
 }
 
-class _wonder_pageState extends State<wonder_page> {
-  int _currentPageIndex = 0;
-  bool is_map = false;
+class _WonderPageState extends State<WonderPage> {
+  bool isMap = false;
   bool isItinairaire = false;
-  final Wonder wond;
   final verte = const Color(0xff226900);
   double userLong = 0.0;
   double userLat = 0.0;
-  ValueNotifier<double?> load_val = ValueNotifier<double?>(null);
+  ValueNotifier<double?> loadVal = ValueNotifier<double?>(null);
   ValueNotifier<bool> isLoading = ValueNotifier<bool>(true);
   final PageController _pageStorieController = PageController();
+  final TextEditingController _signalementController = TextEditingController();
 
-  _wonder_pageState({required this.wond});
 
-  bool is_like = false;
+  bool isLike = false;
   bool isKeyboardVisible = false;
   late Box<Wonder> favorisBox;
   late final Future<QuerySnapshot> images;
-  String _locationMessage = "";
   List<LatLng> points = [];
   double distanceKm = 0.0;
   MapController mapController = MapController();
@@ -79,13 +75,13 @@ class _wonder_pageState extends State<wonder_page> {
     getRoute();
     images = FirebaseFirestore.instance
         .collection('images_wonder')
-        .where('wonder_id', isEqualTo: wond.idWonder)
+        .where('wonder_id', isEqualTo: widget.wond.idWonder)
         .get();
     favorisBox = Hive.box<Wonder>('favoris_wonder');
     final bool estPresent = favorisBox.values
-        .any((wonder_de_la_box) => wonder_de_la_box.idWonder == wond.idWonder);
+        .any((wonderdelaBox) => wonderdelaBox.idWonder == widget.wond.idWonder);
     if (estPresent) {
-      is_like = true;
+      isLike = true;
     }
 
     KeyboardVisibilityController().onChange.listen((bool visible) {
@@ -95,6 +91,7 @@ class _wonder_pageState extends State<wonder_page> {
     });
     chargercached();
   }
+
 
   Future<void> chargercached() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -111,47 +108,66 @@ class _wonder_pageState extends State<wonder_page> {
     }
   }
 
-  _getCurrentLocation() async {
+  Future<void> _getCurrentLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Test if location services are enabled.
+    // Vérifiez si les services de localisation sont activés
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      setState(() {
-        _locationMessage = "Location services are disabled.";
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Veuillez activer les services de localisation."),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
+    // Vérifiez les permissions
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        setState(() {
-          _locationMessage = "Location permissions are denied";
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Les permissions de localisation sont refusées."),
+            backgroundColor: Colors.red,
+          ),
+        );
         return;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
-      setState(() {
-        _locationMessage =
-            "Location permissions are permanently denied, we cannot request permissions.";
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              "Les permissions de localisation sont refusées de manière permanente. Veuillez les activer manuellement dans les paramètres."),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
-    // If we reach here, permissions are granted and we can get the location.
-    final Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    setState(() {
-      userLat = position.latitude;
-      userLong = position.longitude;
-      _locationMessage =
-          "Latitude: ${position.latitude}, Longitude: ${position.longitude}";
-    });
+    // Obtenez la position actuelle
+    try {
+      final Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        userLat = position.latitude;
+        userLong = position.longitude;
+      });
+    } catch (e, stackTrace) {
+      debugPrint("Erreur : $e");
+      debugPrint("Stack trace : $stackTrace");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Une erreur est survenue : ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -177,96 +193,150 @@ class _wonder_pageState extends State<wonder_page> {
 
   Future<void> _pickImage() async {
     final XFile? selectedImage =
-        await _picker.pickImage(source: ImageSource.gallery);
+    await _picker.pickImage(source: ImageSource.gallery);
     setState(() {
       _image = selectedImage;
     });
 
     if (_image != null) {
-      showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text("Images selectionnees"),
-              content: Image.file(File(_image!.path)),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text("Annuler")),
-                ElevatedButton(
-                    onPressed: () async {
-                      Navigator.of(context).pop();
-
-                      showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              title: const Text("Success"),
-                              content: SizedBox(
-                                height: 200,
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Gif(
-                                        height: 100,
-                                        image: const AssetImage(
-                                            "assets/succes.gif"),
-                                        autostart: Autostart.loop,
-                                        placeholder: (context) =>
-                                            const Text('Loading...'),
-                                      ),
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 15),
-                                        child: Text(
-                                            "Images proposes avec succes",
-                                            style: GoogleFonts.lalezar(
-                                                textStyle: const TextStyle(
-                                                    fontSize: 20,
-                                                    fontWeight:
-                                                        FontWeight.bold))),
-                                      )
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              actions: [
-                                Center(
-                                  child: ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.of(context).pop();
-                                        Navigator.of(context).pop();
-                                      },
-                                      child: const Text("Continuer")),
-                                )
-                              ],
-                            );
-                          });
-                    },
-                    child: const Text("Soumettre"))
-              ],
-            );
-          });
+      _showImageDialog();
     }
   }
 
+  Future<void> _uploadImageToFirebase() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible:
+        false, // Empêche la fermeture du modal en cliquant à l'extérieur
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(), // Indicateur de chargement
+                SizedBox(height: 16), // Espacement
+                Text('Veuillez patienter...'),
+              ],
+            ),
+          );
+        },
+      );
+      if (_image == null) return;
+
+      // Référence du stockage Firebase
+      final String fileName = '${widget.wond.idWonder}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final Reference storageRef =
+      FirebaseStorage.instance.ref().child('wonders_images_proposes/$fileName');
+
+      // Upload de l'image
+      final UploadTask uploadTask = storageRef.putFile(File(_image!.path));
+      final TaskSnapshot snapshot = await uploadTask;
+
+      // Récupération de l'URL
+      final String imageUrl = await snapshot.ref.getDownloadURL();
+
+
+      // Enregistrement dans Firestore
+      await FirebaseFirestore.instance.collection('wonders_images_proposition').add({
+        'wonderId': widget.wond.idWonder,
+        'imageUrl': imageUrl,
+        'uploadedAt': FieldValue.serverTimestamp(),
+      });
+
+      _showSuccessDialog();
+    } catch (e, stackTrace) {
+      debugPrint("Erreur : $e");
+      debugPrint("Stack trace : $stackTrace");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Une erreur est survenue : ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showImageDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Image sélectionnée"),
+          content: Image.file(File(_image!.path)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Annuler"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+                _uploadImageToFirebase();
+              },
+              child: const Text("Soumettre"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Succès"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green, size: 80),
+              const SizedBox(height: 15),
+              Text(
+                "Image proposée avec succès",
+                style: GoogleFonts.lalezar(
+                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
+                },
+                child: const Text("Continuer"),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   Future<Map<String, dynamic>> meteoToday() async {
-    final weatherData = await wond.meteoFetch();
+    final weatherData = await widget.wond.meteoFetch();
     return weatherData['current'];
   }
 
   Future<Map<String, dynamic>> meteoDemain() async {
-    final weatherData = await wond.meteoFetch();
+    final weatherData = await widget.wond.meteoFetch();
     return weatherData['daily'][1];
   }
 
   Future<Map<String, dynamic>> meteoApresDemain() async {
-    final weatherData = await wond.meteoFetch();
+    final weatherData = await widget.wond.meteoFetch();
     return weatherData['daily'][2];
   }
 
   Future<Map<String, dynamic>> meteoDernierJour() async {
-    final weatherData = await wond.meteoFetch();
+    final weatherData = await widget.wond.meteoFetch();
     return weatherData['daily'][3];
   }
 
@@ -275,42 +345,46 @@ class _wonder_pageState extends State<wonder_page> {
   }
 
   Future<void> getRoute() async {
-    await _getCurrentLocation();
+    try {
+      await _getCurrentLocation();
 
-    // Vérifier que la localisation est disponible
-    if (userLat == null || userLong == null) {
-      print("User location is not available.");
-      return;
-    }
-    final url = Uri.parse(
-        "https://api.openrouteservice.org/v2/directions/driving-car?api_key=$apiKey&start=${userLong},${userLat}&end=${wond.longitude},${wond.latitude}");
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      if (data["features"] == null || data["features"].isEmpty) {
-        return;
+      if (userLat == null || userLong == null) {
+        throw Exception("Localisation de l'utilisateur non disponible.");
       }
 
-      // Récupérer les coordonnées de l'itinéraire
-      final coordinates = data["features"][0]["geometry"]["coordinates"];
+      final url = Uri.parse(
+          "https://api.openrouteservice.org/v2/directions/driving-car?api_key=$apiKey&start=$userLong,$userLat&end=${widget.wond.longitude},${widget.wond.latitude}");
 
-      // Récupérer la distance totale (en mètres)
-      double distanceMeters =
-          data["features"][0]["properties"]["segments"][0]["distance"];
+      final response = await http.get(url);
 
-      setState(() {
-        points = coordinates
-            .map<LatLng>((coord) => LatLng(coord[1], coord[0]))
-            .toList();
-        distanceKm = distanceMeters / 1000; // Convert meters to km
-      });
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data["features"] == null || data["features"].isEmpty) {
+          throw Exception("Aucun itinéraire trouvé.");
+        }
 
-      load_val.value = 10.0;
-    } else {
-      print("Error fetching route: ${response.body}");
+        final coordinates = data["features"][0]["geometry"]["coordinates"];
+        final double distanceMeters =
+        data["features"][0]["properties"]["segments"][0]["distance"];
+
+        setState(() {
+          points = coordinates
+              .map<LatLng>((coord) => LatLng(coord[1], coord[0]))
+              .toList();
+          distanceKm = distanceMeters / 1000;
+        });
+      } else {
+        throw Exception("Erreur lors de la récupération de l'itinéraire : ${response.body}");
+      }
+    } catch (e, stackTrace) {
+      debugPrint("Erreur : $e");
+      debugPrint("Stack trace : $stackTrace");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Une erreur est survenue : ${e.toString()}"),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -332,13 +406,13 @@ class _wonder_pageState extends State<wonder_page> {
                   onPressed: () {
                     if (AuthService().currentUser != null) {
                       setState(() {
-                        if (is_like) {
-                          is_like = false;
+                        if (isLike) {
+                          isLike = false;
                           Logique()
                               .supprimerFavorisWonder(favorisBox.length - 1);
                         } else {
-                          SetFavorisWonder(wond);
-                          is_like = true;
+                          SetFavorisWonder(widget.wond);
+                          isLike = true;
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: Container(
                               height: 50,
@@ -356,10 +430,10 @@ class _wonder_pageState extends State<wonder_page> {
                         }
                       });
                     } else {
-                      connect_first(context);
+                      ConnectFirst(context);
                     }
                   },
-                  icon: is_like
+                  icon: isLike
                       ? const Icon(
                           Icons.favorite,
                           color: Colors.red,
@@ -368,7 +442,8 @@ class _wonder_pageState extends State<wonder_page> {
                 ),
                 IconButton(
                     onPressed: () {
-                      //Share.share('*Titre* : ${widget.wond.wonderName}\n \n Description : ${widget.wond.description}\n \n Télécharger l\'application : ${widget.wond.imagePath}');
+                      //Share.share('check out my website https://example.com');
+                      Share.share("J'ai decouvert sur l'application camwonders le lieu : ${widget.wond.wonderName}\n \n Description : ${widget.wond.description}\n \n Télécharger l\'application : https://www.camwonders.com");
                     },
                     icon: const Icon(Icons.share))
               ],
@@ -377,923 +452,939 @@ class _wonder_pageState extends State<wonder_page> {
         ],
       ),
       body: SingleChildScrollView(
-        child: Container(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              is_map
-                  ? mapsWonder(size)
-                  : isItinairaire
-                      ? ItinairaireWonder(size)
-                      : ImagesWonders(wond: wond),
-              Container(
-                  padding: EdgeInsets.only(
-                      left: size.width / 16, right: size.width / 16),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ligneAcces_btnCarte(size.width),
-                        Text(
-                          wond.wonderName,
-                          style: GoogleFonts.lalezar(
-                              textStyle: const TextStyle(
-                            fontSize: 24,
-                          )),
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              wond.city,
-                              style: GoogleFonts.jura(),
-                            ),
-                            Container(
-                              margin:
-                                  const EdgeInsets.only(left: 10, right: 10),
-                              width: 1,
-                              height: 10,
-                              color: const Color(0xff226900),
-                            ),
-                            Text(
-                              "${distanceKm.toStringAsFixed(2)} km de votre position",
-                              style: GoogleFonts.jura(
-                                  textStyle: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Row(
-                              children: [
-                                // Pleines étoiles
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            isMap
+                ? MapsWonder(size)
+                : isItinairaire
+                    ? ItinairaireWonder(size)
+                    : ImagesWonders(wond: widget.wond),
+            Container(
+                padding: EdgeInsets.only(
+                    left: size.width / 16, right: size.width / 16),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LigneAccesBtnCarte(size.width),
+                      Text(
+                        widget.wond.wonderName,
+                        style: GoogleFonts.lalezar(
+                            textStyle: const TextStyle(
+                          fontSize: 24,
+                        )),
+                      ),
+                      Row(
+                        children: [
+                          Text(
+                            widget.wond.city,
+                            style: GoogleFonts.jura(),
+                          ),
+                          Container(
+                            margin:
+                                const EdgeInsets.only(left: 10, right: 10),
+                            width: 1,
+                            height: 10,
+                            color: const Color(0xff226900),
+                          ),
+                          Text(
+                            "${distanceKm.toStringAsFixed(2)} km de votre position",
+                            style: GoogleFonts.jura(
+                                textStyle: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Row(
+                            children: [
+                              // Pleines étoiles
+                              Row(
+                                children: List.generate(
+                                  widget.wond.note.floor(),
+                                  (index) => const Icon(
+                                    Icons.star_rounded,
+                                    color: Colors.orange,
+                                    size: 15,
+                                  ),
+                                ),
+                              ),
+                              // Demi-étoile si nécessaire
+                              if (widget.wond.note - widget.wond.note.floor() != 1 &&
+                                  widget.wond.note - widget.wond.note.floor() != 0)
+                                const Icon(
+                                  Icons.star_half_rounded,
+                                  color: Colors.orange,
+                                  size: 15,
+                                ),
+                              // Étoiles vides
+                              if (widget.wond.note.floor() != 5 &&
+                                  widget.wond.note - widget.wond.note.floor() == 0)
                                 Row(
                                   children: List.generate(
-                                    wond.note.floor(),
+                                    5 - widget.wond.note.floor(),
                                     (index) => const Icon(
-                                      Icons.star_rounded,
+                                      Icons.star_border_rounded,
                                       color: Colors.orange,
                                       size: 15,
                                     ),
                                   ),
                                 ),
-                                // Demi-étoile si nécessaire
-                                if (wond.note - wond.note.floor() != 1 &&
-                                    wond.note - wond.note.floor() != 0)
-                                  const Icon(
-                                    Icons.star_half_rounded,
-                                    color: Colors.orange,
-                                    size: 15,
-                                  ),
-                                // Étoiles vides
-                                if (wond.note.floor() != 5 &&
-                                    wond.note - wond.note.floor() == 0)
-                                  Row(
-                                    children: List.generate(
-                                      5 - wond.note.floor(),
-                                      (index) => const Icon(
-                                        Icons.star_border_rounded,
-                                        color: Colors.orange,
-                                        size: 15,
-                                      ),
+                              if (widget.wond.note.floor() != 5 &&
+                                  widget.wond.note - widget.wond.note.floor() != 1 &&
+                                  widget.wond.note - widget.wond.note.floor() != 0)
+                                Row(
+                                  children: List.generate(
+                                    4 - widget.wond.note.floor(),
+                                    (index) => const Icon(
+                                      Icons.star_border_rounded,
+                                      color: Colors.orange,
+                                      size: 15,
                                     ),
                                   ),
-                                if (wond.note.floor() != 5 &&
-                                    wond.note - wond.note.floor() != 1 &&
-                                    wond.note - wond.note.floor() != 0)
-                                  Row(
-                                    children: List.generate(
-                                      4 - wond.note.floor(),
-                                      (index) => const Icon(
-                                        Icons.star_border_rounded,
-                                        color: Colors.orange,
-                                        size: 15,
-                                      ),
+                                ),
+                              if (widget.wond.note.floor() == 5 &&
+                                  widget.wond.note - widget.wond.note.floor() != 1 &&
+                                  widget.wond.note - widget.wond.note.floor() != 0)
+                                Row(
+                                  children: List.generate(
+                                    4 - widget.wond.note.floor(),
+                                    (index) => const Icon(
+                                      Icons.star_border_rounded,
+                                      color: Colors.orange,
+                                      size: 15,
                                     ),
                                   ),
-                                if (wond.note.floor() == 5 &&
-                                    wond.note - wond.note.floor() != 1 &&
-                                    wond.note - wond.note.floor() != 0)
-                                  Row(
-                                    children: List.generate(
-                                      4 - wond.note.floor(),
-                                      (index) => const Icon(
-                                        Icons.star_border_rounded,
-                                        color: Colors.orange,
-                                        size: 15,
-                                      ),
-                                    ),
-                                  ),
+                                ),
+                            ],
+                          ),
+                          Container(
+                            margin:
+                                const EdgeInsets.only(left: 10, right: 10),
+                            width: 2,
+                            height: 20,
+                            color: const Color(0xff226900),
+                          ),
+                          Text(
+                            widget.wond.note.toStringAsFixed(1),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold),
+                          )
+                        ],
+                      ),
+                      DescriptionWidget(wond: widget.wond),
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.directions_car,
+                                  size: 30,
+                                ),
+                                const SizedBox(
+                                  width: 10,
+                                ),
+                                Text(
+                                  "Accès ${widget.wond.acces}",
+                                  style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold),
+                                ),
                               ],
                             ),
-                            Container(
-                              margin:
-                                  const EdgeInsets.only(left: 10, right: 10),
-                              width: 2,
-                              height: 20,
-                              color: const Color(0xff226900),
+                            const SizedBox(
+                              height: 10,
                             ),
-                            Text(
-                              wond.note.toStringAsFixed(1),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            )
-                          ],
-                        ),
-                        descriptionWidget(wond: wond),
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 20),
-                          child: Column(
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(
-                                    Icons.directions_car,
-                                    size: 30,
-                                  ),
-                                  SizedBox(
-                                    width: 10,
-                                  ),
-                                  Text(
-                                    "Accès par voiture",
-                                    style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(
-                                height: 10,
-                              ),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.monetization_on_rounded,
-                                    size: 30,
-                                  ),
-                                  const SizedBox(
-                                    width: 10,
-                                  ),
-                                  Text(
-                                    "À partir de ${wond.free ? "Gratuit" : (devise == "FCFA" ? "${wond.price} FCFA" : "\$${(wond.price / 600).toStringAsFixed(2)}")}",
-                                    style: const TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Points forts",
-                              style: GoogleFonts.lalezar(
-                                  textStyle:
-                                      TextStyle(fontSize: 18, color: verte)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.only(
-                                  left: size.width / 20, bottom: 20),
-                              child: FutureBuilder<List<Map<String, dynamic>>>(
-                                future: wond.getAvantages(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.hasError) {
-                                    return const Center(
-                                        child: Text(
-                                            "Quelques n'a pas bien marché"));
-                                  }
-
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const Center(
-                                        child: CircularProgressIndicator(
-                                      color: Color(0xff226900),
-                                    ));
-                                  }
-
-                                  if (!snapshot.hasData ||
-                                      snapshot.data!.isEmpty) {
-                                    Center(
-                                        child: Text(
-                                            "Pas de points forts pour ce lieu",
-                                            style: GoogleFonts.jura(
-                                                textStyle: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.bold))));
-                                  }
-
-                                  final documents = snapshot.data!;
-
-                                  return Column(
-                                      children: List.generate(documents.length,
-                                          (index) {
-                                    final data = documents[index];
-
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                              padding: const EdgeInsets.only(
-                                                  right: 10),
-                                              child: Icon(
-                                                LucideIcons.checkCircle,
-                                                color: verte,
-                                                size: 17,
-                                              )),
-                                          Text(
-                                            data['content'],
-                                            style: GoogleFonts.jura(
-                                                textStyle: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                          )
-                                        ],
-                                      ),
-                                    );
-                                  }));
-                                },
-                              ),
-                            )
-                          ],
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Limites",
-                              style: GoogleFonts.lalezar(
-                                  textStyle: const TextStyle(
-                                      fontSize: 18, color: Colors.red)),
-                            ),
-                            Container(
-                              padding: EdgeInsets.only(
-                                  left: size.width / 20, bottom: 20),
-                              child: FutureBuilder<List<Map<String, dynamic>>>(
-                                future: wond.getInconvenients(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.hasError) {
-                                    return const Center(
-                                        child: Text(
-                                            "Quelques n'a pas bien marché"));
-                                  }
-
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return const Center(
-                                        child: CircularProgressIndicator(
-                                      color: Color(0xff226900),
-                                    ));
-                                  }
-
-                                  if (!snapshot.hasData ||
-                                      snapshot.data!.isEmpty) {
-                                    return Center(
-                                        child: Text(
-                                            "Pas de limites enregistrées pour ce lieu",
-                                            style: GoogleFonts.jura(
-                                                textStyle: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.bold))));
-                                  }
-
-                                  final documents = snapshot.data!;
-
-                                  return Column(
-                                      children: List.generate(documents.length,
-                                          (index) {
-                                    final data = documents[index];
-
-                                    return Padding(
-                                      padding: const EdgeInsets.only(top: 8),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                              padding: const EdgeInsets.only(
-                                                  right: 10),
-                                              child: Icon(
-                                                LucideIcons.ban,
-                                                color: verte,
-                                                size: 17,
-                                              )),
-                                          Text(
-                                            data['content'],
-                                            style: GoogleFonts.jura(
-                                                textStyle: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight:
-                                                        FontWeight.bold)),
-                                          )
-                                        ],
-                                      ),
-                                    );
-                                  }));
-                                },
-                              ),
-                            )
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.only(top: 20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                child: Text(
-                                  "Méteo",
-                                  style: GoogleFonts.lalezar(
-                                      textStyle: const TextStyle(
-                                    fontSize: 20,
-                                  )),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.monetization_on_rounded,
+                                  size: 30,
                                 ),
-                              ),
-                              SizedBox(
-                                width: size.width,
-                                //padding: EdgeInsets.fromLTRB(
-                                //  size.width / 25, size.width / 25, size.width / 25, 0),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    FutureBuilder<Map<String, dynamic>>(
-                                      future: meteoToday(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const Center(
-                                              child:
-                                                  CircularProgressIndicator());
-                                        } else if (snapshot.hasError) {
-                                          return const Center(
-                                              child: Text(
-                                                  'Un problème est survenu'));
-                                        } else if (!snapshot.hasData) {
-                                          return const Center(
-                                              child: Text(
-                                                  'Pas de données disponible'));
-                                        } else {
-                                          final weather = snapshot.data!;
-                                          final weatherIconId =
-                                              weather['weather'][0]['icon'];
-                                          final weatherIconUrl =
-                                              getWeatherIconUrl(weatherIconId);
-                                          final double temp = weather['temp'];
-                                          final double tempCelcius =
-                                              temp - 273.15;
-
-                                          return Column(
-                                            children: [
-                                              Text(
-                                                "Aujourd'hui",
-                                                style: GoogleFonts.jura(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 12,
-                                                )),
-                                              ),
-                                              SizedBox(
-                                                  width: size.width / 5,
-                                                  child: Image.network(
-                                                      weatherIconUrl)),
-                                              Text(
-                                                '${tempCelcius.toStringAsFixed(1)}°',
-                                                style: GoogleFonts.lalezar(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 18,
-                                                )),
-                                              ),
-                                            ],
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    FutureBuilder<Map<String, dynamic>>(
-                                      future: meteoDemain(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const Center(
-                                              child:
-                                                  CircularProgressIndicator());
-                                        } else if (snapshot.hasError) {
-                                          return const Center(
-                                              child: Text(
-                                                  'Pas de données disponible'));
-                                        } else if (!snapshot.hasData) {
-                                          return const Center(
-                                              child: Text('No data available'));
-                                        } else {
-                                          final weather = snapshot.data!;
-                                          final weatherIconId =
-                                              weather['weather'][0]['icon'];
-                                          final weatherIconUrl =
-                                              getWeatherIconUrl(weatherIconId);
-                                          final double temp =
-                                              weather['temp']['day'];
-                                          final double tempCelcius =
-                                              temp - 273.15;
-
-                                          return Column(
-                                            children: [
-                                              Text(
-                                                "Demain",
-                                                style: GoogleFonts.jura(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 12,
-                                                )),
-                                              ),
-                                              SizedBox(
-                                                  width: size.width / 5,
-                                                  child: Image.network(
-                                                      weatherIconUrl)),
-                                              Text(
-                                                '${tempCelcius.toStringAsFixed(1)}°',
-                                                style: GoogleFonts.lalezar(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 18,
-                                                )),
-                                              ),
-                                            ],
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    FutureBuilder<Map<String, dynamic>>(
-                                      future: meteoApresDemain(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const Center(
-                                              child:
-                                                  CircularProgressIndicator());
-                                        } else if (snapshot.hasError) {
-                                          return const Center(
-                                              child: Text(
-                                                  'Un problème est survenu'));
-                                        } else if (!snapshot.hasData) {
-                                          return const Center(
-                                              child: Text(
-                                                  'Pas de données disponible'));
-                                        } else {
-                                          final weather = snapshot.data!;
-                                          final weatherIconId =
-                                              weather['weather'][0]['icon'];
-                                          final weatherIconUrl =
-                                              getWeatherIconUrl(weatherIconId);
-                                          final double temp =
-                                              weather['temp']['day'];
-                                          final double tempCelcius =
-                                              temp - 273.15;
-
-                                          return Column(
-                                            children: [
-                                              Text(
-                                                "Après-demain",
-                                                style: GoogleFonts.jura(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 12,
-                                                )),
-                                              ),
-                                              SizedBox(
-                                                  width: size.width / 5,
-                                                  child: Image.network(
-                                                      weatherIconUrl)),
-                                              Text(
-                                                '${tempCelcius.toStringAsFixed(1)}°',
-                                                style: GoogleFonts.lalezar(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 18,
-                                                )),
-                                              ),
-                                            ],
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    FutureBuilder<Map<String, dynamic>>(
-                                      future: meteoDernierJour(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const Center(
-                                              child:
-                                                  CircularProgressIndicator());
-                                        } else if (snapshot.hasError) {
-                                          return const Center(
-                                              child: Text(
-                                                  'Quelques chose n\'a pas bien marché'));
-                                        } else if (!snapshot.hasData) {
-                                          return const Center(
-                                              child: Text('Pas de donnees'));
-                                        } else {
-                                          final weather = snapshot.data!;
-                                          final weatherIconId =
-                                              weather['weather'][0]['icon'];
-                                          final weatherIconUrl =
-                                              getWeatherIconUrl(weatherIconId);
-                                          final double temp =
-                                              weather['temp']['day'];
-                                          final double tempCelcius =
-                                              temp - 273.15;
-                                          final DateTime date = DateTime.now();
-                                          final DateTime lendemain =
-                                              date.add(const Duration(days: 3));
-
-                                          return Column(
-                                            children: [
-                                              Text(
-                                                "${lendemain.day}/${lendemain.month}/${lendemain.year}",
-                                                style: GoogleFonts.jura(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 12,
-                                                )),
-                                              ),
-                                              SizedBox(
-                                                  width: size.width / 5,
-                                                  child: Image.network(
-                                                      weatherIconUrl)),
-                                              Text(
-                                                '${tempCelcius.toStringAsFixed(1)}°',
-                                                style: GoogleFonts.lalezar(
-                                                    textStyle: const TextStyle(
-                                                  fontSize: 18,
-                                                )),
-                                              ),
-                                            ],
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ],
+                                const SizedBox(
+                                  width: 10,
                                 ),
-                              )
-                            ],
-                          ),
+                                Text(
+                                  "À partir de ${widget.wond.free ? "Gratuit" : (devise == "FCFA" ? "${widget.wond.price} FCFA" : "\$${(widget.wond.price / 600).toStringAsFixed(2)}")}",
+                                  style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.only(top: 15),
-                          margin: EdgeInsets.all(size.width / 100),
-                          child: Column(
-                            children: [
-                              Text(
-                                "Contribuer",
-                                style: GoogleFonts.lalezar(
-                                    textStyle: const TextStyle(fontSize: 20)),
-                              ),
-                              Container(
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        if (AuthService().currentUser != null) {
-                                          _showReviewModal(context);
-                                        } else {
-                                          connect_first(context);
-                                        }
-                                      },
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Points forts",
+                            style: GoogleFonts.lalezar(
+                                textStyle:
+                                    TextStyle(fontSize: 18, color: verte)),
+                          ),
+                          Container(
+                            padding: EdgeInsets.only(
+                                left: size.width / 20, bottom: 20),
+                            child: FutureBuilder<List<Map<String, dynamic>>>(
+                              future: widget.wond.getAvantages(),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return const Center(
                                       child: Text(
-                                        "Laisser un avis",
-                                        style: GoogleFonts.jura(
-                                            textStyle: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white)),
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        showDialog(
-                                            context: context,
-                                            builder: (BuildContext context) {
-                                              return AlertDialog(
-                                                title: const Text(
-                                                    "Choisissez une methode"),
-                                                actions: [
-                                                  Column(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .spaceAround,
-                                                      children: [
-                                                        ElevatedButton(
-                                                            onPressed:
-                                                                _pickImage,
-                                                            child: Row(
-                                                              mainAxisAlignment:
-                                                                  MainAxisAlignment
-                                                                      .center,
-                                                              children: [
-                                                                const Icon(
-                                                                  LucideIcons
-                                                                      .image,
-                                                                  size: 20,
-                                                                ),
-                                                                Text(
-                                                                  "Gallerie",
-                                                                  style:
-                                                                      GoogleFonts
-                                                                          .jura(),
-                                                                )
-                                                              ],
-                                                            )),
-                                                        ElevatedButton(
-                                                            onPressed: null,
-                                                            child: Row(
-                                                              mainAxisAlignment:
-                                                                  MainAxisAlignment
-                                                                      .center,
-                                                              children: [
-                                                                const Icon(
-                                                                  LucideIcons
-                                                                      .camera,
-                                                                  size: 20,
-                                                                ),
-                                                                Text(
-                                                                  "Appareil photo",
-                                                                  style:
-                                                                      GoogleFonts
-                                                                          .jura(),
-                                                                )
-                                                              ],
-                                                            )),
-                                                      ])
-                                                ],
-                                              );
-                                            });
-                                      },
+                                          "Quelques n'a pas bien marché"));
+                                }
+
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                      child: CircularProgressIndicator(
+                                    color: Color(0xff226900),
+                                  ));
+                                }
+
+                                if (!snapshot.hasData ||
+                                    snapshot.data!.isEmpty) {
+                                  Center(
                                       child: Text(
-                                        "Proposer des photos",
-                                        style: GoogleFonts.jura(
-                                            textStyle: const TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.white)),
-                                      ),
+                                          "Pas de points forts pour ce lieu",
+                                          style: GoogleFonts.jura(
+                                              textStyle: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight:
+                                                      FontWeight.bold))));
+                                }
+
+                                final documents = snapshot.data!;
+
+                                return Column(
+                                    children: List.generate(documents.length,
+                                        (index) {
+                                  final data = documents[index];
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                            padding: const EdgeInsets.only(
+                                                right: 10),
+                                            child: Icon(
+                                              LucideIcons.checkCircle,
+                                              color: verte,
+                                              size: 17,
+                                            )),
+                                        Text(
+                                          data['content'],
+                                          style: GoogleFonts.jura(
+                                              textStyle: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight:
+                                                      FontWeight.bold)),
+                                        )
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        StreamBuilder<QuerySnapshot>(
-                          stream: wond.getAvis(),
-                          builder: (BuildContext context,
-                              AsyncSnapshot<QuerySnapshot> snapshot) {
-                            if (snapshot.hasError) {
-                              return const Text("Un problème est survenu");
-                            }
-
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const SingleChildScrollView(
-                                child: const Column(
-                                  children: [
-                                    CircularProgressIndicator(
-                                        color: Color(0xff226900))
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (snapshot.data!.docs.isEmpty) {
-                              return Center(
-                                  child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    height: size.height / 13,
-                                    margin: const EdgeInsets.all(20),
-                                    child: Image.asset('assets/review.png'),
-                                  ),
-                                  const Text("Pas d'avis !")
-                                ],
-                              ));
-                            }
-
-                            return ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: min(snapshot.data!.docs.length, 2),
-                                itemBuilder: (BuildContext context, int index) {
-                                  final DocumentSnapshot document =
-                                      snapshot.data!.docs[index];
-                                  final Avis avis = Avis(
-                                    idAvis: document.id,
-                                    note: document['note'],
-                                    content: document['content'],
-                                    wonder: document['wonder'],
-                                    user: document['user'],
-                                    userImage: document['userImage'],
                                   );
-                                  return GestureDetector(
-                                      onTap: () => null,
-                                      child: CommentWidget(
-                                          size: size, avis: avis, maxlines: 2));
-                                });
-                          },
-                        ),
-                        Center(
-                          child: Container(
-                            margin: const EdgeInsets.only(top: 12, bottom: 15),
-                            child: TextButton(
-                                onPressed: () {
-                                  showModalBottomSheet(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return Container(
-                                          padding: const EdgeInsets.all(10),
-                                          child: StreamBuilder<QuerySnapshot>(
-                                            stream: wond.getAvis(),
-                                            builder: (BuildContext context,
-                                                AsyncSnapshot<QuerySnapshot>
-                                                    snapshot) {
-                                              if (snapshot.hasError) {
-                                                return const Text(
-                                                    'Un problème est survenu');
-                                              }
+                                }));
+                              },
+                            ),
+                          )
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Limites",
+                            style: GoogleFonts.lalezar(
+                                textStyle: const TextStyle(
+                                    fontSize: 18, color: Colors.red)),
+                          ),
+                          Container(
+                            padding: EdgeInsets.only(
+                                left: size.width / 20, bottom: 20),
+                            child: FutureBuilder<List<Map<String, dynamic>>>(
+                              future: widget.wond.getInconvenients(),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasError) {
+                                  return const Center(
+                                      child: Text(
+                                          "Quelques n'a pas bien marché"));
+                                }
 
-                                              if (snapshot.connectionState ==
-                                                  ConnectionState.waiting) {
-                                                return const SingleChildScrollView(
-                                                  child: const Column(
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const Center(
+                                      child: CircularProgressIndicator(
+                                    color: Color(0xff226900),
+                                  ));
+                                }
+
+                                if (!snapshot.hasData ||
+                                    snapshot.data!.isEmpty) {
+                                  return Center(
+                                      child: Text(
+                                          "Pas de limites enregistrées pour ce lieu",
+                                          style: GoogleFonts.jura(
+                                              textStyle: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight:
+                                                      FontWeight.bold))));
+                                }
+
+                                final documents = snapshot.data!;
+
+                                return Column(
+                                    children: List.generate(documents.length,
+                                        (index) {
+                                  final data = documents[index];
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                            padding: const EdgeInsets.only(
+                                                right: 10),
+                                            child: Icon(
+                                              LucideIcons.ban,
+                                              color: verte,
+                                              size: 17,
+                                            )),
+                                        Text(
+                                          data['content'],
+                                          style: GoogleFonts.jura(
+                                              textStyle: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight:
+                                                      FontWeight.bold)),
+                                        )
+                                      ],
+                                    ),
+                                  );
+                                }));
+                              },
+                            ),
+                          )
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.only(top: 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              child: Text(
+                                "Méteo",
+                                style: GoogleFonts.lalezar(
+                                    textStyle: const TextStyle(
+                                  fontSize: 20,
+                                )),
+                              ),
+                            ),
+                            SizedBox(
+                              width: size.width,
+                              //padding: EdgeInsets.fromLTRB(
+                              //  size.width / 25, size.width / 25, size.width / 25, 0),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: [
+                                  FutureBuilder<Map<String, dynamic>>(
+                                    future: meteoToday(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child:
+                                                CircularProgressIndicator());
+                                      } else if (snapshot.hasError) {
+                                        return const Center(
+                                            child: Text(
+                                                'Un problème est survenu'));
+                                      } else if (!snapshot.hasData) {
+                                        return const Center(
+                                            child: Text(
+                                                'Pas de données disponible'));
+                                      } else {
+                                        final weather = snapshot.data!;
+                                        final weatherIconId =
+                                            weather['weather'][0]['icon'];
+                                        final weatherIconUrl =
+                                            getWeatherIconUrl(weatherIconId);
+                                        final double temp = weather['temp'];
+                                        final double tempCelcius =
+                                            temp - 273.15;
+
+                                        return Column(
+                                          children: [
+                                            Text(
+                                              "Aujourd'hui",
+                                              style: GoogleFonts.jura(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 12,
+                                              )),
+                                            ),
+                                            SizedBox(
+                                                width: size.width / 5,
+                                                child: Image.network(
+                                                    weatherIconUrl)),
+                                            Text(
+                                              '${tempCelcius.toStringAsFixed(1)}°',
+                                              style: GoogleFonts.lalezar(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 18,
+                                              )),
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  FutureBuilder<Map<String, dynamic>>(
+                                    future: meteoDemain(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child:
+                                                CircularProgressIndicator());
+                                      } else if (snapshot.hasError) {
+                                        return const Center(
+                                            child: Text(
+                                                'Pas de données disponible'));
+                                      } else if (!snapshot.hasData) {
+                                        return const Center(
+                                            child: Text('No data available'));
+                                      } else {
+                                        final weather = snapshot.data!;
+                                        final weatherIconId =
+                                            weather['weather'][0]['icon'];
+                                        final weatherIconUrl =
+                                            getWeatherIconUrl(weatherIconId);
+                                        final double temp =
+                                            weather['temp']['day'];
+                                        final double tempCelcius =
+                                            temp - 273.15;
+
+                                        return Column(
+                                          children: [
+                                            Text(
+                                              "Demain",
+                                              style: GoogleFonts.jura(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 12,
+                                              )),
+                                            ),
+                                            SizedBox(
+                                                width: size.width / 5,
+                                                child: Image.network(
+                                                    weatherIconUrl)),
+                                            Text(
+                                              '${tempCelcius.toStringAsFixed(1)}°',
+                                              style: GoogleFonts.lalezar(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 18,
+                                              )),
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  FutureBuilder<Map<String, dynamic>>(
+                                    future: meteoApresDemain(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child:
+                                                CircularProgressIndicator());
+                                      } else if (snapshot.hasError) {
+                                        return const Center(
+                                            child: Text(
+                                                'Un problème est survenu'));
+                                      } else if (!snapshot.hasData) {
+                                        return const Center(
+                                            child: Text(
+                                                'Pas de données disponible'));
+                                      } else {
+                                        final weather = snapshot.data!;
+                                        final weatherIconId =
+                                            weather['weather'][0]['icon'];
+                                        final weatherIconUrl =
+                                            getWeatherIconUrl(weatherIconId);
+                                        final double temp =
+                                            weather['temp']['day'];
+                                        final double tempCelcius =
+                                            temp - 273.15;
+
+                                        return Column(
+                                          children: [
+                                            Text(
+                                              "Après-demain",
+                                              style: GoogleFonts.jura(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 12,
+                                              )),
+                                            ),
+                                            SizedBox(
+                                                width: size.width / 5,
+                                                child: Image.network(
+                                                    weatherIconUrl)),
+                                            Text(
+                                              '${tempCelcius.toStringAsFixed(1)}°',
+                                              style: GoogleFonts.lalezar(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 18,
+                                              )),
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  FutureBuilder<Map<String, dynamic>>(
+                                    future: meteoDernierJour(),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child:
+                                                CircularProgressIndicator());
+                                      } else if (snapshot.hasError) {
+                                        return const Center(
+                                            child: Text(
+                                                'Quelques chose n\'a pas bien marché'));
+                                      } else if (!snapshot.hasData) {
+                                        return const Center(
+                                            child: Text('Pas de donnees'));
+                                      } else {
+                                        final weather = snapshot.data!;
+                                        final weatherIconId =
+                                            weather['weather'][0]['icon'];
+                                        final weatherIconUrl =
+                                            getWeatherIconUrl(weatherIconId);
+                                        final double temp =
+                                            weather['temp']['day'];
+                                        final double tempCelcius =
+                                            temp - 273.15;
+                                        final DateTime date = DateTime.now();
+                                        final DateTime lendemain =
+                                            date.add(const Duration(days: 3));
+
+                                        return Column(
+                                          children: [
+                                            Text(
+                                              "${lendemain.day}/${lendemain.month}/${lendemain.year}",
+                                              style: GoogleFonts.jura(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 12,
+                                              )),
+                                            ),
+                                            SizedBox(
+                                                width: size.width / 5,
+                                                child: Image.network(
+                                                    weatherIconUrl)),
+                                            Text(
+                                              '${tempCelcius.toStringAsFixed(1)}°',
+                                              style: GoogleFonts.lalezar(
+                                                  textStyle: const TextStyle(
+                                                fontSize: 18,
+                                              )),
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.only(top: 15),
+                        margin: EdgeInsets.all(size.width / 100),
+                        child: Column(
+                          children: [
+                            Text(
+                              "Contribuer",
+                              style: GoogleFonts.lalezar(
+                                  textStyle: const TextStyle(fontSize: 20)),
+                            ),
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceAround,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () {
+                                    if (AuthService().currentUser != null) {
+                                      _showReviewModal(context);
+                                    } else {
+                                      ConnectFirst(context);
+                                    }
+                                  },
+                                  child: Text(
+                                    "Laisser un avis",
+                                    style: GoogleFonts.jura(
+                                        textStyle: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white)),
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    showDialog(
+                                        context: context,
+                                        builder: (BuildContext context) {
+                                          return AlertDialog(
+                                            title: const Text(
+                                                "Choisissez une methode"),
+                                            actions: [
+                                              Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceAround,
+                                                  children: [
+                                                    ElevatedButton(
+                                                        onPressed:
+                                                            _pickImage,
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            const Icon(
+                                                              LucideIcons
+                                                                  .image,
+                                                              size: 20,
+                                                            ),
+                                                            Text(
+                                                              "Gallerie",
+                                                              style:
+                                                                  GoogleFonts
+                                                                      .jura(),
+                                                            )
+                                                          ],
+                                                        )),
+                                                    ElevatedButton(
+                                                        onPressed: null,
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            const Icon(
+                                                              LucideIcons
+                                                                  .camera,
+                                                              size: 20,
+                                                            ),
+                                                            Text(
+                                                              "Appareil photo",
+                                                              style:
+                                                                  GoogleFonts
+                                                                      .jura(),
+                                                            )
+                                                          ],
+                                                        )),
+                                                  ])
+                                            ],
+                                          );
+                                        });
+                                  },
+                                  child: Text(
+                                    "Proposer des photos",
+                                    style: GoogleFonts.jura(
+                                        textStyle: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: widget.wond.getAvis(),
+                        builder: (BuildContext context,
+                            AsyncSnapshot<QuerySnapshot> snapshot) {
+                          if (snapshot.hasError) {
+                            return const Text("Un problème est survenu");
+                          }
+
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  CircularProgressIndicator(
+                                      color: Color(0xff226900))
+                                ],
+                              ),
+                            );
+                          }
+
+                          if (snapshot.data!.docs.isEmpty) {
+                            return Center(
+                                child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  height: size.height / 13,
+                                  margin: const EdgeInsets.all(20),
+                                  child: Image.asset('assets/review.png'),
+                                ),
+                                const Text("Pas d'avis !")
+                              ],
+                            ));
+                          }
+
+                          return ListView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: min(snapshot.data!.docs.length, 2),
+                              itemBuilder: (BuildContext context, int index) {
+                                final DocumentSnapshot document =
+                                    snapshot.data!.docs[index];
+                                final Avis avis = Avis(
+                                  idAvis: document.id,
+                                  note: document['note'],
+                                  content: document['content'],
+                                  wonder: document['wonder'],
+                                  user: document['user'],
+                                  userImage: document['userImage'],
+                                );
+                                return GestureDetector(
+                                    onTap: () => null,
+                                    child: CommentWidget(
+                                        size: size, avis: avis, maxlines: 2));
+                              });
+                        },
+                      ),
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 12, bottom: 15),
+                          child: TextButton(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return Container(
+                                        padding: const EdgeInsets.all(10),
+                                        child: StreamBuilder<QuerySnapshot>(
+                                          stream: widget.wond.getAvis(),
+                                          builder: (BuildContext context,
+                                              AsyncSnapshot<QuerySnapshot>
+                                                  snapshot) {
+                                            if (snapshot.hasError) {
+                                              return const Text(
+                                                  'Un problème est survenu');
+                                            }
+
+                                            if (snapshot.connectionState ==
+                                                ConnectionState.waiting) {
+                                              return const SingleChildScrollView(
+                                                child: Column(
+                                                  children: [
+                                                    CircularProgressIndicator(
+                                                        color:
+                                                            Color(0xff226900))
+                                                  ],
+                                                ),
+                                              );
+                                            }
+
+                                            if (snapshot.data!.docs.isEmpty) {
+                                              return Center(
+                                                  child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Container(
+                                                    height: size.height / 15,
+                                                    margin:
+                                                        const EdgeInsets.all(
+                                                            10),
+                                                    child: Theme.of(context)
+                                                                .brightness ==
+                                                            Brightness.light
+                                                        ? Image.asset(
+                                                            'assets/review.png')
+                                                        : Image.asset(
+                                                            'assets/review.png'),
+                                                  ),
+                                                  const Text("Pas d'avis !")
+                                                ],
+                                              ));
+                                            }
+
+                                            return ListView.builder(
+                                                shrinkWrap: true,
+                                                itemCount: snapshot
+                                                    .data!.docs.length,
+                                                itemBuilder:
+                                                    (BuildContext context,
+                                                        int index) {
+                                                  final DocumentSnapshot
+                                                      document = snapshot
+                                                          .data!.docs[index];
+                                                  final Avis avis = Avis(
+                                                    idAvis: document.id,
+                                                    note: document['note'],
+                                                    content:
+                                                        document['content'],
+                                                    wonder:
+                                                        document['wonder'],
+                                                    user: document['user'],
+                                                    userImage:
+                                                        document['userImage'],
+                                                  );
+                                                  return GestureDetector(
+                                                      onTap: () {},
+                                                      child: CommentWidget(
+                                                          size: size,
+                                                          avis: avis,
+                                                          maxlines: 2000));
+                                                });
+                                          },
+                                        ),
+                                      );
+                                    });
+                              },
+                              style: ButtonStyle(
+                                backgroundColor:
+                                    WidgetStateProperty.all<Color>(
+                                        Colors.transparent),
+                                foregroundColor:
+                                    WidgetStateProperty.all(verte),
+                                shape:
+                                    WidgetStateProperty.all<OutlinedBorder>(
+                                        RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20))),
+                                side: WidgetStateProperty.all<BorderSide>(
+                                    BorderSide(color: verte)),
+                                padding: WidgetStateProperty.all<
+                                        EdgeInsetsGeometry>(
+                                    EdgeInsets.fromLTRB(size.width / 4, 7,
+                                        size.width / 4, 7)),
+                              ),
+                              child: const Text(
+                                "Charger plus d'avis",
+                                style: TextStyle(fontSize: 10),
+                              )),
+                        ),
+                      ),
+                      Text(
+                        "Evénements",
+                        style: GoogleFonts.lalezar(
+                            textStyle: const TextStyle(
+                          fontSize: 20,
+                        )),
+                      ),
+                    ])),
+            EvenementList(wond: widget.wond),
+            GuidesList(wond: widget.wond, size: size),
+            Container(
+              margin: EdgeInsets.only(
+                left: size.width / 16,
+                right: size.width / 16,
+              ),
+              child: Text(
+                "Similaires",
+                style: GoogleFonts.lalezar(
+                    textStyle: const TextStyle(
+                  fontSize: 20,
+                )),
+              ),
+            ),
+            SimilairesList(wond: widget.wond),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Center(
+                  child: GestureDetector(
+                      onTap: () {
+                        if (AuthService().currentUser != null) {
+                          showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  content: Container(
+                                    padding: const EdgeInsets.all(4.0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Text(
+                                          "Signalez une erreur sur ce lieu :",
+                                          style: TextStyle(fontSize: 18.0),
+                                        ),
+                                        const SizedBox(height: 16.0),
+                                        TextField(
+                                          controller: _signalementController,
+                                          decoration: const InputDecoration(
+                                            hintText:
+                                                "Quelle erreur vous trouvez sur ce lieu...",
+                                            border: OutlineInputBorder(),
+                                          ),
+                                          maxLines: 3,
+                                        ),
+                                        const SizedBox(height: 16.0),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                          ),
+                                          onPressed: () {
+                                            widget.wond.addSignalement(_signalementController.text);
+                                            showDialog(
+                                              context: context,
+                                              barrierDismissible:
+                                              false, // Empêche la fermeture du modal en cliquant à l'extérieur
+                                              builder: (BuildContext context) {
+                                                return const AlertDialog(
+                                                  content: Column(
+                                                    mainAxisSize: MainAxisSize.min,
                                                     children: [
-                                                      CircularProgressIndicator(
-                                                          color:
-                                                              Color(0xff226900))
+                                                      CircularProgressIndicator(), // Indicateur de chargement
+                                                      SizedBox(height: 16), // Espacement
+                                                      Text('Veuillez patienter...'),
                                                     ],
                                                   ),
                                                 );
-                                              }
-
-                                              if (snapshot.data!.docs.isEmpty) {
-                                                return Center(
-                                                    child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Container(
-                                                      height: size.height / 15,
-                                                      margin:
-                                                          const EdgeInsets.all(
-                                                              10),
-                                                      child: Theme.of(context)
-                                                                  .brightness ==
-                                                              Brightness.light
-                                                          ? Image.asset(
-                                                              'assets/review.png')
-                                                          : Image.asset(
-                                                              'assets/review.png'),
-                                                    ),
-                                                    const Text("Pas d'avis !")
-                                                  ],
-                                                ));
-                                              }
-
-                                              return ListView.builder(
-                                                  shrinkWrap: true,
-                                                  itemCount: snapshot
-                                                      .data!.docs.length,
-                                                  itemBuilder:
-                                                      (BuildContext context,
-                                                          int index) {
-                                                    final DocumentSnapshot
-                                                        document = snapshot
-                                                            .data!.docs[index];
-                                                    final Avis avis = Avis(
-                                                      idAvis: document.id,
-                                                      note: document['note'],
-                                                      content:
-                                                          document['content'],
-                                                      wonder:
-                                                          document['wonder'],
-                                                      user: document['user'],
-                                                      userImage:
-                                                          document['userImage'],
-                                                    );
-                                                    return GestureDetector(
-                                                        onTap: () {},
-                                                        child: CommentWidget(
-                                                            size: size,
-                                                            avis: avis,
-                                                            maxlines: 2000));
-                                                  });
-                                            },
-                                          ),
-                                        );
-                                      });
-                                },
-                                style: ButtonStyle(
-                                  backgroundColor:
-                                      WidgetStateProperty.all<Color>(
-                                          Colors.transparent),
-                                  foregroundColor:
-                                      WidgetStateProperty.all(verte),
-                                  shape:
-                                      WidgetStateProperty.all<OutlinedBorder>(
-                                          RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(20))),
-                                  side: WidgetStateProperty.all<BorderSide>(
-                                      BorderSide(color: verte)),
-                                  padding: WidgetStateProperty.all<
-                                          EdgeInsetsGeometry>(
-                                      EdgeInsets.fromLTRB(size.width / 4, 7,
-                                          size.width / 4, 7)),
-                                ),
-                                child: const Text(
-                                  "Charger plus d'avis",
-                                  style: TextStyle(fontSize: 10),
-                                )),
-                          ),
-                        ),
-                        Text(
-                          "Evénements",
-                          style: GoogleFonts.lalezar(
-                              textStyle: const TextStyle(
-                            fontSize: 20,
-                          )),
-                        ),
-                      ])),
-              EvenementList(wond: wond),
-              GuidesList(wond: wond, size: size),
-              Container(
-                margin: EdgeInsets.only(
-                  left: size.width / 16,
-                  right: size.width / 16,
-                ),
-                child: Text(
-                  "Similaires",
-                  style: GoogleFonts.lalezar(
-                      textStyle: const TextStyle(
-                    fontSize: 20,
-                  )),
-                ),
-              ),
-              SimilairesList(wond: wond),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Center(
-                    child: GestureDetector(
-                        onTap: () {
-                          if (AuthService().currentUser != null) {
-                            showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    content: Container(
-                                      padding: const EdgeInsets.all(4.0),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text(
-                                            "Signalez une erreur sur ce lieu :",
-                                            style: TextStyle(fontSize: 18.0),
-                                          ),
-                                          const SizedBox(height: 16.0),
-                                          const TextField(
-                                            decoration: InputDecoration(
-                                              hintText:
-                                                  "Quelle erreur vous trouvez sur ce lieu...",
-                                              border: OutlineInputBorder(),
-                                            ),
-                                            maxLines: 3,
-                                          ),
-                                          const SizedBox(height: 16.0),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.red,
-                                            ),
-                                            onPressed: () {
-                                              // Logique pour enregistrer l'avis
-                                              Navigator.of(context)
-                                                  .pop(); // Fermer la boîte de dialogue
-                                            },
-                                            child: const Text("Envoyer"),
-                                          ),
-                                        ],
-                                      ),
+                                              },
+                                            );
+                                            Navigator.of(context)
+                                                .pop(); // Fermer la boîte de dialogue
+                                            Navigator.of(context)
+                                                .pop(); // Fermer la boîte de dialogue
+                                          },
+                                          child: const Text("Envoyer"),
+                                        ),
+                                      ],
                                     ),
-                                  );
-                                });
-                          } else {
-                            connect_first(context);
-                          }
-                        },
-                        child: Text("Signalez une erreur",
-                            style: GoogleFonts.jura(
-                                textStyle: const TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline))))),
-              )
-            ],
-          ),
+                                  ),
+                                );
+                              });
+                        } else {
+                          ConnectFirst(context);
+                        }
+                      },
+                      child: Text("Signalez une erreur",
+                          style: GoogleFonts.jura(
+                              textStyle: const TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.underline))))),
+            )
+          ],
         ),
       ),
       bottomNavigationBar: Container(
@@ -1305,20 +1396,20 @@ class _wonder_pageState extends State<wonder_page> {
             SizedBox(
                 width: size.width / 3,
                 child: Text(
-                  "Ouvert : ${wond.horaire}",
+                  "Ouvert : ${widget.wond.horaire}",
                   style: GoogleFonts.lalezar(
                       textStyle: TextStyle(fontSize: 15, color: verte)),
                 )),
             ElevatedButton(
               onPressed: () {
                 if (AuthService().currentUser != null) {
-                  if (wond.isreservable) {
+                  if (widget.wond.isreservable) {
                     if (userProvider.isPremium) {
                       showDialog(
                           context: context,
                           builder: (BuildContext context) {
                             return AlertDialog(
-                              content: ReservationModal(wond: wond),
+                              content: ReservationModal(wond: widget.wond),
                             );
                           });
                     } else {
@@ -1347,7 +1438,7 @@ class _wonder_pageState extends State<wonder_page> {
                         });
                   }
                 } else {
-                  connect_first(context);
+                  ConnectFirst(context);
                 }
               },
               child: Text(
@@ -1364,7 +1455,7 @@ class _wonder_pageState extends State<wonder_page> {
                       if (userLong != 0) {
                         setState(() {
                           isItinairaire = true;
-                          is_map = false;
+                          isMap = false;
                         });
                       } else {
                         showDialog(
@@ -1385,8 +1476,8 @@ class _wonder_pageState extends State<wonder_page> {
                           },
                         );
 
-                        load_val.addListener(() {
-                          if (load_val.value != null) {
+                        loadVal.addListener(() {
+                          if (loadVal.value != null) {
                             Navigator.of(context).pop(); // Fermer le modal
                           }
                         });
@@ -1398,7 +1489,7 @@ class _wonder_pageState extends State<wonder_page> {
                               builder: (context) => SubscriptionPage()));
                     }
                   } else {
-                    connect_first(context);
+                    ConnectFirst(context);
                   }
                 },
                 child: Row(
@@ -1421,7 +1512,7 @@ class _wonder_pageState extends State<wonder_page> {
     );
   }
 
-  Future<dynamic> en_developpement(BuildContext context) {
+  Future<dynamic> EnDeveloppement(BuildContext context) {
     return showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -1435,22 +1526,21 @@ class _wonder_pageState extends State<wonder_page> {
         });
   }
 
-  Future<dynamic> connect_first(BuildContext context) {
+  Future<dynamic> ConnectFirst(BuildContext context) {
     return showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Container(
-                child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text("Ignorer",
-                      style: TextStyle(decoration: TextDecoration.underline)),
-                )
-              ],
-            )),
+            title: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Ignorer",
+                  style: TextStyle(decoration: TextDecoration.underline)),
+            )
+                          ],
+                        ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1489,7 +1579,7 @@ class _wonder_pageState extends State<wonder_page> {
         });
   }
 
-  Container ligneAcces_btnCarte(double width) {
+  Container LigneAccesBtnCarte(double width) {
     return Container(
       padding: EdgeInsets.all(width / 50),
       margin: const EdgeInsets.only(top: 20, bottom: 20),
@@ -1514,12 +1604,12 @@ class _wonder_pageState extends State<wonder_page> {
                             ),
                             Text(
                               devise == "FCFA"
-                                  ? wond.free
+                                  ? widget.wond.free
                                       ? "Gratuit"
-                                      : "${wond.price} Fcfa"
-                                  : wond.free
+                                      : "${widget.wond.price} Fcfa"
+                                  : widget.wond.free
                                       ? "Gratuit"
-                                      : "\$${(wond.price / 600).toStringAsFixed(2)}",
+                                      : "\$${(widget.wond.price / 600).toStringAsFixed(2)}",
                               style: GoogleFonts.lalezar(
                                   textStyle: const TextStyle(fontSize: 25)),
                             )
@@ -1529,39 +1619,37 @@ class _wonder_pageState extends State<wonder_page> {
                     );
                   });
             },
-            child: Container(
-              child: Row(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xff226900),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    padding: const EdgeInsets.all(10),
-                    child: Text(
-                      "Accèss",
-                      style: GoogleFonts.lalezar(
-                          textStyle: const TextStyle(
-                              fontSize: 16, color: Colors.white)),
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xff226900),
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(5),
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? Colors.white
-                          : Colors.transparent,
-                    ),
-                    padding: const EdgeInsets.all(10),
-                    child: Text(
-                      wond.free ? "Gratuit" : "Payant",
-                      style: GoogleFonts.lalezar(
-                          textStyle: const TextStyle(
-                              fontSize: 16, color: Color(0xff226900))),
-                    ),
-                  )
-                ],
-              ),
+                  padding: const EdgeInsets.all(10),
+                  child: Text(
+                    "Accèss",
+                    style: GoogleFonts.lalezar(
+                        textStyle: const TextStyle(
+                            fontSize: 16, color: Colors.white)),
+                  ),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(5),
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? Colors.white
+                        : Colors.transparent,
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: Text(
+                    widget.wond.free ? "Gratuit" : "Payant",
+                    style: GoogleFonts.lalezar(
+                        textStyle: const TextStyle(
+                            fontSize: 16, color: Color(0xff226900))),
+                  ),
+                )
+              ],
             ),
           ),
           Container(
@@ -1572,11 +1660,11 @@ class _wonder_pageState extends State<wonder_page> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                if (is_map) {
-                  is_map = false;
+                if (isMap) {
+                  isMap = false;
                   isItinairaire = false;
                 } else {
-                  is_map = true;
+                  isMap = true;
                   isItinairaire = false;
                 }
               });
@@ -1589,7 +1677,7 @@ class _wonder_pageState extends State<wonder_page> {
                   color: Colors.white,
                 ),
                 Text(
-                  is_map ? "  Images" : "  Carte",
+                  isMap ? "  Images" : "  Carte",
                   style: GoogleFonts.lalezar(
                       textStyle:
                           const TextStyle(fontSize: 16, color: Colors.white)),
@@ -1602,14 +1690,14 @@ class _wonder_pageState extends State<wonder_page> {
     );
   }
 
-  SizedBox mapsWonder(Size size) {
+  SizedBox MapsWonder(Size size) {
     return SizedBox(
       height: 350,
       width: size.width,
       child: FlutterMap(
         options: MapOptions(
           initialCenter: latLng.LatLng(
-              double.parse(wond.latitude), double.parse(wond.longitude)),
+              double.parse(widget.wond.latitude), double.parse(widget.wond.longitude)),
           initialZoom: 14,
           interactionOptions:
               const InteractionOptions(flags: ~InteractiveFlag.doubleTapZoom),
@@ -1619,7 +1707,7 @@ class _wonder_pageState extends State<wonder_page> {
           MarkerLayer(markers: [
             Marker(
                 point: latLng.LatLng(
-                    double.parse(wond.latitude), double.parse(wond.longitude)),
+                    double.parse(widget.wond.latitude), double.parse(widget.wond.longitude)),
                 child: const Icon(
                   Icons.location_pin,
                   color: Color(0xff226900),
@@ -1636,7 +1724,7 @@ class _wonder_pageState extends State<wonder_page> {
       height: 350,
       width: size.width,
       child: Stack(
-        alignment: Alignment(1, 1),
+        alignment: const Alignment(1, 1),
         children: [
           FlutterMap(
             mapController: mapController,
@@ -1667,25 +1755,21 @@ class _wonder_pageState extends State<wonder_page> {
                     width: 80.0,
                     height: 80.0,
                     point: latLng.LatLng(userLat, userLong),
-                    child: Container(
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 40.0,
-                      ),
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.red,
+                      size: 40.0,
                     ),
                   ),
                   Marker(
                     width: 80.0,
                     height: 80.0,
-                    point: latLng.LatLng(double.parse(wond.latitude),
-                        double.parse(wond.longitude)),
-                    child: Container(
-                      child: const Icon(
-                        Icons.location_on,
-                        color: Colors.green,
-                        size: 40.0,
-                      ),
+                    point: latLng.LatLng(double.parse(widget.wond.latitude),
+                        double.parse(widget.wond.longitude)),
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.green,
+                      size: 40.0,
                     ),
                   ),
                 ],
@@ -1693,7 +1777,7 @@ class _wonder_pageState extends State<wonder_page> {
             ],
           ),
           Container(
-            margin: EdgeInsets.only(right: 5),
+            margin: const EdgeInsets.only(right: 5),
             child: ElevatedButton(
               onPressed: () {
                 {
@@ -1703,8 +1787,8 @@ class _wonder_pageState extends State<wonder_page> {
                           pageBuilder: (_, __, ___) => MapScreen(
                                 userLong: userLong,
                                 userLat: userLat,
-                                endLat: double.parse(wond.latitude),
-                                endLong: double.parse(wond.longitude),
+                                endLat: double.parse(widget.wond.latitude),
+                                endLong: double.parse(widget.wond.longitude),
                                 distanceKm: distanceKm,
                               ),
                           transitionsBuilder: (_, animation, __, child) {
@@ -1723,7 +1807,7 @@ class _wonder_pageState extends State<wonder_page> {
                               const Duration(milliseconds: 500)));
                 }
               },
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
@@ -1748,7 +1832,7 @@ class _wonder_pageState extends State<wonder_page> {
       context: context,
       isScrollControlled: true,
       builder: (context) => Builder(
-        builder: (context) => ReviewModal(wond: wond),
+        builder: (context) => ReviewModal(wond: widget.wond),
       ),
     );
   }
@@ -1790,7 +1874,6 @@ class _ImagesWondersState extends State<ImagesWonders> {
       setState(() {
         _isLoading = false;
       });
-      print("Erreur lors du chargement des images : $e");
     }
   }
 
@@ -1867,7 +1950,7 @@ class _ImagesWondersState extends State<ImagesWonders> {
       end = totalDots;
     }
 
-    List<Widget> dots = [];
+    final List<Widget> dots = [];
 
     if (start > 0) {
       dots.add(
@@ -1943,7 +2026,7 @@ class _ImagesWondersState extends State<ImagesWonders> {
                       onTap: () {
                         _showFullScreenImage(data['image_url']);
                       },
-                      child: photoWonder(
+                      child: PhotoWonder(
                         path: data['image_url'],
                         wonderName: widget.wond.wonderName,
                       ),
@@ -1966,16 +2049,16 @@ class _ImagesWondersState extends State<ImagesWonders> {
   }
 }
 
-class descriptionWidget extends StatefulWidget {
-  const descriptionWidget({super.key, required this.wond});
+class DescriptionWidget extends StatefulWidget {
+  const DescriptionWidget({super.key, required this.wond});
   final Wonder wond;
 
   @override
-  State<descriptionWidget> createState() => _descriptionWidgetState();
+  State<DescriptionWidget> createState() => _DescriptionWidgetState();
 }
 
-class _descriptionWidgetState extends State<descriptionWidget> {
-  bool is_voir = false;
+class _DescriptionWidgetState extends State<DescriptionWidget> {
+  bool isVoir = false;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1984,7 +2067,7 @@ class _descriptionWidgetState extends State<descriptionWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.wond.description,
-                maxLines: is_voir ? 1000 : 4,
+                maxLines: isVoir ? 1000 : 4,
                 style: GoogleFonts.jura(
                     textStyle: const TextStyle(
                   fontSize: 15,
@@ -1992,15 +2075,15 @@ class _descriptionWidgetState extends State<descriptionWidget> {
             GestureDetector(
               onTap: () {
                 setState(() {
-                  if (is_voir) {
-                    is_voir = false;
+                  if (isVoir) {
+                    isVoir = false;
                   } else {
-                    is_voir = true;
+                    isVoir = true;
                   }
                 });
               },
               child: Text(
-                is_voir ? "Voir moins" : "Voir plus",
+                isVoir ? "Voir moins" : "Voir plus",
                 style: GoogleFonts.lalezar(
                     textStyle: const TextStyle(
                         fontSize: 16, decoration: TextDecoration.underline)),
@@ -2077,11 +2160,11 @@ class _CommentWidgetState extends State<CommentWidget> {
         borderRadius: BorderRadius.circular(10),
         border: Border.fromBorderSide(BorderSide(
             color: Theme.of(context).brightness != Brightness.light
-                ? Colors.black.withOpacity(0.3)
+                ? Colors.black.withValues(alpha:0.3)
                 : Colors.grey)),
         color: Theme.of(context).brightness == Brightness.light
             ? Colors.white
-            : Colors.black.withOpacity(0.3),
+            : Colors.black.withValues(alpha:0.3),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2283,11 +2366,11 @@ class _GuideWidgetState extends State<GuideWidget> {
   }
 }
 
-class photoWonder extends StatelessWidget {
+class PhotoWonder extends StatelessWidget {
   final String path;
   final String wonderName;
 
-  const photoWonder({super.key, required this.path, required this.wonderName});
+  const PhotoWonder({super.key, required this.path, required this.wonderName});
 
   @override
   Widget build(BuildContext context) {
@@ -2328,8 +2411,6 @@ class SimilairesList extends StatefulWidget {
 
 class _SimilairesListState extends State<SimilairesList> {
   final ScrollController _controller = ScrollController();
-  final double _height = 150.0;
-  final double _width = 140.0;
 
   @override
   void initState() {
@@ -2337,18 +2418,6 @@ class _SimilairesListState extends State<SimilairesList> {
     // Assurez-vous que le widget est construit avant d'appeler _animateToIndex
   }
 
-  // Largeur de chaque élément dans la liste
-  void _animateToIndex(int index) {
-    double offset = index * _width;
-    if (_controller.hasClients) {
-      offset = offset - (_controller.position.viewportDimension - _width) / 2;
-      _controller.animateTo(
-        offset,
-        duration: const Duration(seconds: 2),
-        curve: Curves.fastOutSlowIn,
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2389,8 +2458,6 @@ class _SimilairesListState extends State<SimilairesList> {
                 children: snapshot.data!.docs
                     .where((doc) => doc.id != widget.wond.idWonder)
                     .map((DocumentSnapshot document) {
-                  final Map<String, dynamic> data =
-                      document.data() as Map<String, dynamic>;
                   final Wonder wwond = Wonder(
                       idWonder: document.id,
                       wonderName: document['wonderName'],
@@ -2405,7 +2472,8 @@ class _SimilairesListState extends State<SimilairesList> {
                       longitude: document['longitude'],
                       note: (document['note'] as num).toDouble(),
                       categorie: document['categorie'],
-                      isreservable: document['isreservable']);
+                      isreservable: document['isreservable'],
+                      acces: document['acces']);
                   return Storie(wond: wwond);
                 }).toList(),
               ),
@@ -2443,7 +2511,7 @@ class _GuidesListState extends State<GuidesList> {
 
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SingleChildScrollView(
-            child: const Column(
+            child: Column(
               children: [CircularProgressIndicator(color: Color(0xff226900))],
             ),
           );
@@ -2472,8 +2540,6 @@ class _GuidesListState extends State<GuidesList> {
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(), // Permet le défilement
             children: snapshot.data!.docs.map((DocumentSnapshot document) {
-              final Map<String, dynamic> data =
-                  document.data() as Map<String, dynamic>;
               final Guide guide = Guide(
                 id: document['id'],
                 numero: document['numero'],
@@ -2537,25 +2603,11 @@ class EvenementList extends StatefulWidget {
 
 class _EvenementListState extends State<EvenementList> {
   final ScrollController _controller = ScrollController();
-  final double _height = 150.0;
-  final double _width = 140.0;
 
   @override
   void initState() {
     super.initState();
     // Assurez-vous que le widget est construit avant d'appeler _animateToIndex
-  }
-
-  void _animateToIndex(int index) {
-    double offset = index * _width;
-    if (_controller.hasClients) {
-      offset = offset - (_controller.position.viewportDimension - _width) / 2;
-      _controller.animateTo(
-        offset,
-        duration: const Duration(seconds: 2),
-        curve: Curves.fastOutSlowIn,
-      );
-    }
   }
 
   String truncate(String text) {
@@ -2600,8 +2652,6 @@ class _EvenementListState extends State<EvenementList> {
                 shrinkWrap: true,
                 scrollDirection: Axis.horizontal,
                 children: snapshot.data!.docs.map((DocumentSnapshot document) {
-                  final Map<String, dynamic> data =
-                      document.data() as Map<String, dynamic>;
                   final Evenements evenement = Evenements(
                       idevenements: document.id,
                       contenu: document['contenu'],
@@ -2645,7 +2695,7 @@ class _EvenementListState extends State<EvenementList> {
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.light
-                            ? const Color(0xff226900).withOpacity(0.1)
+                            ? const Color(0xff226900).withValues(alpha:0.1)
                             : Colors.black54,
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -2753,14 +2803,12 @@ class Storie extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Size size = MediaQuery.of(context).size;
-    final double height = size.height;
     return GestureDetector(
       onTap: () {
         Navigator.push(
             context,
             MaterialPageRoute(
-                builder: (BuildContext context) => wonder_page(wond: wond)));
+                builder: (BuildContext context) => WonderPage(wond: wond)));
       },
       child: Container(
         margin: const EdgeInsets.only(left: 10),
@@ -2797,7 +2845,7 @@ class Storie extends StatelessWidget {
                 width: 140,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6),
-                  color: verte.withOpacity(0.8),
+                  color: verte.withValues(alpha:0.8),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -2831,6 +2879,7 @@ class ReviewModal extends StatefulWidget {
 class _ReviewModalState extends State<ReviewModal> {
   double _rating = 0;
   final TextEditingController _reviewController = TextEditingController();
+
 
   @override
   void dispose() {
@@ -2953,7 +3002,7 @@ class _ReservationModalModalState extends State<ReservationModal> {
       children: [
         Container(
             decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.2),
+                color: Colors.green.withValues(alpha:0.2),
                 borderRadius: BorderRadius.circular(500)),
             height: 80,
             width: 80,
@@ -2980,14 +3029,15 @@ class _ReservationModalModalState extends State<ReservationModal> {
                 controller: nbrePersonnesController,
                 decoration: const InputDecoration(
                   labelText: 'Nombre de personnes',
-                  border: OutlineInputBorder(
-                      borderSide: BorderSide(width: 2, color: Colors.white12)),
-                  contentPadding: EdgeInsets.fromLTRB(20, 15, 10, 15),
+                  border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Veuillez entrer le nombre de personnes';
+                  }
+                  if (int.tryParse(value) == null || int.parse(value) <= 0) {
+                    return 'Veuillez entrer un nombre valide (supérieur à 0)';
                   }
                   return null;
                 },
@@ -3046,7 +3096,7 @@ class _ReservationModalModalState extends State<ReservationModal> {
                                 children: [
                                   Container(
                                       decoration: BoxDecoration(
-                                          color: Colors.green.withOpacity(0.2),
+                                          color: Colors.green.withValues(alpha:0.2),
                                           borderRadius:
                                               BorderRadius.circular(500)),
                                       height: 80,
@@ -3074,40 +3124,38 @@ class _ReservationModalModalState extends State<ReservationModal> {
                               ),
                             ),
                             actions: [
-                              Container(
-                                child: Column(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    SizedBox(
-                                      width: MediaQuery.of(context).size.width,
-                                      child: ElevatedButton(
-                                          onPressed: () {
-                                            widget.wond.addReservation(
-                                                numeroTelController.text,
-                                                int.parse(
-                                                    nbrePersonnesController
-                                                        .text),
-                                                dateController.text);
-                                            Navigator.pop(context);
-                                            Navigator.pop(context);
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(const SnackBar(
-                                              content: Text(
-                                                  "Reservation enregistré !"),
-                                              backgroundColor:
-                                                  Color(0xff226900),
-                                              duration: Duration(seconds: 1),
-                                            ));
-                                          },
-                                          child: const Text("Confirmer")),
-                                    ),
-                                    TextButton(
-                                        onPressed: () =>
-                                            Navigator.of(context).pop(),
-                                        child: const Text("Annuler")),
-                                  ],
-                                ),
+                              Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  SizedBox(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: ElevatedButton(
+                                        onPressed: () {
+                                          widget.wond.addReservation(
+                                              numeroTelController.text,
+                                              int.parse(
+                                                  nbrePersonnesController
+                                                      .text),
+                                              dateController.text);
+                                          Navigator.pop(context);
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(const SnackBar(
+                                            content: Text(
+                                                "Reservation enregistré !"),
+                                            backgroundColor:
+                                                Color(0xff226900),
+                                            duration: Duration(seconds: 1),
+                                          ));
+                                        },
+                                        child: const Text("Confirmer")),
+                                  ),
+                                  TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(),
+                                      child: const Text("Annuler")),
+                                ],
                               )
                             ],
                           );

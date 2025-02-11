@@ -42,7 +42,7 @@ class _WelcomeState extends State<Welcome> {
   static const verte = Color(0xff226900);
 
   int _currentPageIndex = 0;
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   Timer? _timer;
   double _scrollOffset = 0.0;
 
@@ -50,7 +50,7 @@ class _WelcomeState extends State<Welcome> {
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: _currentPageIndex);
-     _timer = Timer.periodic(Duration(milliseconds: 800), (Timer timer) {
+     _timer = Timer.periodic(const Duration(milliseconds: 800), (Timer timer) {
       if (_scrollController.hasClients) {
         _scrollOffset += 50.0; // Défilement de 100 pixels à chaque fois
         if (_scrollOffset >= _scrollController.position.maxScrollExtent) {
@@ -58,7 +58,7 @@ class _WelcomeState extends State<Welcome> {
         }
         _scrollController.animateTo(
           _scrollOffset,
-          duration: Duration(milliseconds: 1100),
+          duration: const Duration(milliseconds: 1100),
           curve: Curves.easeInOut,
         );
       }
@@ -100,7 +100,7 @@ class _WelcomeState extends State<Welcome> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
     final halfHeight = size.height/2;
     final width = size.width;
     return Scaffold(
@@ -231,11 +231,11 @@ class _WelcomeState extends State<Welcome> {
                         );
                       },
                       style: ButtonStyle(
-                        backgroundColor: MaterialStateProperty.all<Color>(Colors.transparent),
-                        foregroundColor: MaterialStateProperty.all(verte),
-                        shape: MaterialStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(7))),
-                        side: MaterialStateProperty.all<BorderSide>(const BorderSide(color: verte, width: 3.0)),
-                        padding: MaterialStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(50, 15, 50, 15)),
+                        backgroundColor: WidgetStateProperty.all<Color>(Colors.transparent),
+                        foregroundColor: WidgetStateProperty.all(verte),
+                        shape: WidgetStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(7))),
+                        side: WidgetStateProperty.all<BorderSide>(const BorderSide(color: verte, width: 3.0)),
+                        padding: WidgetStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(50, 15, 50, 15)),
                       ),
                       child: const Text("Passer", style: TextStyle(fontSize: 17),)),
                       ElevatedButton(onPressed: goToNextPage, style: ElevatedButton.styleFrom(padding: const EdgeInsets.fromLTRB(50, 15, 50, 15)), child: const Text("Suivant", style: TextStyle(fontSize: 17),),),
@@ -259,7 +259,7 @@ class FisrtCareeWonder extends StatelessWidget{
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
     return Container(
       margin: const EdgeInsets.all(5),
       height: size.height/6,

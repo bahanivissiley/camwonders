@@ -27,7 +27,6 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
   String phoneNumber = '';
   String contenupop = "Le message est entrain d'etre envoyé";
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  String? _verificationId;
 
   FocusNode focusNode = FocusNode();
 
@@ -55,9 +54,6 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
           }
         },
         codeSent: (String verificationId, int? resendToken) {
-          setState(() {
-            _verificationId = verificationId;
-          });
           Navigator.push(
               context,
               MaterialPageRoute(
@@ -366,17 +362,17 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                         AuthService().currentUser!.displayName,
                                         AuthService().currentUser!.email,
                                         AuthService().currentUser!.uid,
-                                        AuthService().currentUser!.photoURL);
+                                        AuthService().currentUser!.photoURL, context);
                                     await Future.delayed(
                                         const Duration(seconds: 2));
 
                                     Navigator.pop(context);
-                                    Navigator.push(
+                                    Navigator.pushAndRemoveUntil(
                                         context,
                                         PageRouteBuilder(
                                             pageBuilder: (context, animation,
                                                     secondaryAnimation) =>
-                                                MainApp(),
+                                                const MainApp(),
                                             transitionsBuilder: (context,
                                                 animation,
                                                 secondaryAnimation,
@@ -388,7 +384,8 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                                 opacity: animation,
                                                 child: child,
                                               );
-                                            }));
+                                            }),
+                                          (Route<dynamic> route) => false);
                                   } else {
                                     Navigator.pop(context);
                                     ScaffoldMessenger.of(context)
@@ -512,99 +509,77 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                     await Logique.checkInternetConnection();
 
                                 if (isConnected) {
-                                  if (await AuthService().signInWithApple() !=
-                                      null) {
-                                    showModalBottomSheet(
-                                        context: context,
-                                        builder: (BuildContext context) {
-                                          return AnimatedContainer(
-                                            duration: const Duration(
-                                                milliseconds: 200),
-                                            curve: Curves.easeIn,
-                                            child: Container(
-                                              height: height / 3,
-                                              padding: EdgeInsets.only(
-                                                  top: height / 12),
-                                              child: Center(
-                                                child: Column(
-                                                  children: [
-                                                    Gif(
-                                                      height: 100,
-                                                      image: const AssetImage(
-                                                          "assets/succes.gif"),
-                                                      autostart: Autostart.loop,
-                                                    ),
-                                                    Container(
-                                                      margin:
-                                                          const EdgeInsets.only(
-                                                              top: 15),
-                                                      child: Text(
-                                                          "Authentification reussi",
-                                                          style: GoogleFonts.lalezar(
-                                                              textStyle: const TextStyle(
-                                                                  fontSize: 30,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  color:
-                                                                      verte))),
-                                                    )
-                                                  ],
-                                                ),
+                                  await AuthService().signInWithApple();
+                                  showModalBottomSheet(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AnimatedContainer(
+                                          duration: const Duration(
+                                              milliseconds: 200),
+                                          curve: Curves.easeIn,
+                                          child: Container(
+                                            height: height / 3,
+                                            padding: EdgeInsets.only(
+                                                top: height / 12),
+                                            child: Center(
+                                              child: Column(
+                                                children: [
+                                                  Gif(
+                                                    height: 100,
+                                                    image: const AssetImage(
+                                                        "assets/succes.gif"),
+                                                    autostart: Autostart.loop,
+                                                  ),
+                                                  Container(
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                            top: 15),
+                                                    child: Text(
+                                                        "Authentification reussi",
+                                                        style: GoogleFonts.lalezar(
+                                                            textStyle: const TextStyle(
+                                                                fontSize: 30,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color:
+                                                                    verte))),
+                                                  )
+                                                ],
                                               ),
                                             ),
-                                          );
-                                        });
+                                          ),
+                                        );
+                                      });
 
-                                    Camwonder().createUser(
-                                        AuthService().currentUser!.displayName,
-                                        AuthService().currentUser!.email,
-                                        AuthService().currentUser!.uid,
-                                        AuthService().currentUser!.photoURL);
-                                    await Future.delayed(
-                                        const Duration(seconds: 2));
+                                  Camwonder().createUser(
+                                      AuthService().currentUser!.displayName,
+                                      AuthService().currentUser!.email,
+                                      AuthService().currentUser!.uid,
+                                      AuthService().currentUser!.photoURL, context);
+                                  await Future.delayed(
+                                      const Duration(seconds: 2));
 
-                                    Navigator.pop(context);
-                                    Navigator.push(
-                                        context,
-                                        PageRouteBuilder(
-                                            pageBuilder: (context, animation,
-                                                    secondaryAnimation) =>
-                                                MainApp(),
-                                            transitionsBuilder: (context,
-                                                animation,
-                                                secondaryAnimation,
-                                                child) {
-                                              animation = CurvedAnimation(
-                                                  parent: animation,
-                                                  curve: Curves.easeIn);
-                                              return FadeTransition(
-                                                opacity: animation,
-                                                child: child,
-                                              );
-                                            }));
-                                  } else {
-                                    Navigator.pop(context);
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(SnackBar(
-                                      content: Container(
-                                        height: 50,
-                                        decoration: BoxDecoration(
-                                            color: Colors.red,
-                                            borderRadius:
-                                                BorderRadius.circular(10)),
-                                        child: const Center(
-                                            child: Text(
-                                                "Une erreur est survenue, veillez reessayer !")),
-                                      ),
-                                      duration:
-                                          const Duration(milliseconds: 3000),
-                                      behavior: SnackBarBehavior.floating,
-                                      backgroundColor: Colors.transparent,
-                                      elevation: 0,
-                                    ));
-                                  }
-                                } else {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                          pageBuilder: (context, animation,
+                                                  secondaryAnimation) =>
+                                              const MainApp(),
+                                          transitionsBuilder: (context,
+                                              animation,
+                                              secondaryAnimation,
+                                              child) {
+                                            animation = CurvedAnimation(
+                                                parent: animation,
+                                                curve: Curves.easeIn);
+                                            return FadeTransition(
+                                              opacity: animation,
+                                              child: child,
+                                            );
+                                          }));
+                                                                } else {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context)
                                       .showSnackBar(SnackBar(

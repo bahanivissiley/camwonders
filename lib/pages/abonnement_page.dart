@@ -28,7 +28,7 @@ class abonnementPage extends StatelessWidget {
                   end: Alignment.topCenter,
                   colors: [
                     Colors.white,
-                    Colors.white.withOpacity(0)
+                    Colors.white.withValues(alpha:0)
                   ],
                   stops: const [0.6, 1.0]
                 )

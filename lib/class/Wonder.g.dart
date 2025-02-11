@@ -31,6 +31,7 @@ class WonderAdapter extends TypeAdapter<Wonder> {
       note: fields[11] as double,
       categorie: fields[12] as String,
       isreservable: fields[13] as bool,
+      acces: fields[14] as String,
     );
   }
 

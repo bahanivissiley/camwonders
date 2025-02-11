@@ -36,7 +36,6 @@ class _MapScreenState extends State<MapScreen> {
 
     final response = await http.get(url);
 
-    print('2');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -49,7 +48,7 @@ class _MapScreenState extends State<MapScreen> {
       final coordinates = data["features"][0]["geometry"]["coordinates"];
 
       // Récupérer la distance totale (en mètres)
-      double distanceMeters = data["features"][0]["properties"]["segments"][0]["distance"];
+      final double distanceMeters = data["features"][0]["properties"]["segments"][0]["distance"];
 
 
       setState(() {
@@ -58,14 +57,13 @@ class _MapScreenState extends State<MapScreen> {
             .toList();
       });
     } else {
-      print("Error fetching route: ${response.body}");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Itinairaire")),
+      appBar: AppBar(title: const Text("Itinairaire")),
       body: FlutterMap(
         mapController: mapController,
         options: MapOptions(
@@ -94,24 +92,20 @@ class _MapScreenState extends State<MapScreen> {
                 width: 80.0,
                 height: 80.0,
                 point: LatLng(widget.userLat, widget.userLong),
-                child: Container(
-                  child: const Icon(
-                    Icons.location_on,
-                    color: Colors.red,
-                    size: 40.0,
-                  ),
+                child: const Icon(
+                  Icons.location_on,
+                  color: Colors.red,
+                  size: 40.0,
                 ),
               ),
               Marker(
                 width: 80.0,
                 height: 80.0,
                 point: LatLng(widget.endLat, widget.endLong),
-                child: Container(
-                  child: const Icon(
-                    Icons.location_on,
-                    color: Colors.green,
-                    size: 40.0,
-                  ),
+                child: const Icon(
+                  Icons.location_on,
+                  color: Colors.green,
+                  size: 40.0,
                 ),
               ),
             ],
@@ -121,7 +115,7 @@ class _MapScreenState extends State<MapScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: getRoute,
         label: Text("Distance: ${widget.distanceKm.toStringAsFixed(2)} km"),
-        icon: Icon(Icons.route),
+        icon: const Icon(Icons.route),
       ),
     );
   }

@@ -1,11 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:camwonders/class/Notification.dart';
-import 'package:camwonders/class/classes.dart';
-import 'package:camwonders/services/cachemanager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -67,6 +61,13 @@ class WondersProvider with ChangeNotifier {
   Stream<QuerySnapshot> get wondersStream => _wondersStream;
   String get searchQuery => _searchQuery;
 
+  void loadCategorie(String categorieName){
+    _wondersStream = FirebaseFirestore.instance
+        .collection('wonders')
+        .where('categorie', isEqualTo: categorieName)
+        .snapshots();
+  }
+
   void applyFilters(String? selectedForfait, String? region, String? ville, String? categorie) {
     // Commencer avec une référence de base à la collection 'wonders'
     Query query = FirebaseFirestore.instance.collection('wonders').where('categorie', isEqualTo: categorie);
@@ -90,7 +91,7 @@ class WondersProvider with ChangeNotifier {
 
     // Appliquer la recherche si un terme de recherche est présent
     if (_searchQuery.isNotEmpty) {
-      query = query.where('wonderNameLower', isGreaterThanOrEqualTo: _searchQuery).where('wonderNameLower', isLessThan: _searchQuery + 'z');
+      query = query.where('wonderNameLower', isGreaterThanOrEqualTo: _searchQuery).where('wonderNameLower', isLessThan: '${_searchQuery}z');
     }
 
     // Mettre à jour le Stream avec la nouvelle requête
@@ -107,11 +108,16 @@ class WondersProvider with ChangeNotifier {
 }
 
 
-
 class UserProvider with ChangeNotifier {
   bool _isPremium = false;  // État par défaut
+  String _idUser = "";
+  String _name = "";
+  String _profilPath = "";
 
   bool get isPremium => _isPremium;
+  String get idUser => _idUser;
+  String get nom => _name;
+  String get profilPath => _profilPath;
 
   UserProvider() {
     _loadUserPreferences();  // Charger l'état premium au démarrage
@@ -119,22 +125,25 @@ class UserProvider with ChangeNotifier {
 
   // Charger l'état premium depuis SharedPreferences
   Future<void> _loadUserPreferences() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
     _isPremium = prefs.getBool('premium') ?? false;
+    _idUser = prefs.getString('id') ?? "";
+    _name = prefs.getString('nom') ?? "";
+    _profilPath = prefs.getString('profilPath') ?? "";
     notifyListeners(); // Notifier les widgets écoutant ce provider
   }
 
   // Mettre à jour l'état premium et sauvegarder
   Future<void> setPremium(bool value) async {
     _isPremium = value;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setBool('premium', value);
     notifyListeners(); // Met à jour les widgets qui écoutent ce provider
   }
 
   // Déconnexion : Réinitialiser les données utilisateur
   Future<void> logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.clear(); // Supprime toutes les données stockées
     _isPremium = false;  // Réinitialise l'état premium
     notifyListeners();   // Met à jour l'UI

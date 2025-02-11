@@ -2,7 +2,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Utilisateur{
-  // ignore: non_constant_identifier_names
   final String idUser;
   final String identifiant;
   final String nom;
@@ -20,19 +19,5 @@ class Utilisateur{
       profilPath: doc['profilPath'] as String,
     );
   }
-
-  //getWonderFavoris()
-
-  //getNotifications()
-
-  //UpdateProfilPicture()
-
-  //changePassword()
-
-  //changeUsername()
-
-  //setSignalErreur()
-
-  //setRappelVisite()
 
 }

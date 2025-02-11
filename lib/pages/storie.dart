@@ -4,8 +4,6 @@ import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:camwonders/class/classes.dart';
-//import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -15,13 +13,11 @@ class Sttories extends StatefulWidget {
   const Sttories({super.key, required this.wond});
 
   @override
-  State<Sttories> createState() => _StoriesState(wond: wond);
+  State<Sttories> createState() => _StoriesState();
 }
 
 class _StoriesState extends State<Sttories> {
-  _StoriesState({required this.wond});
-  final Wonder wond;
-  int _currentPageIndex = 0;
+  final int _currentPageIndex = 0;
   final PageController _pageStorieController = PageController();
 
   @override
@@ -52,16 +48,16 @@ class _StoriesState extends State<Sttories> {
   Future<QuerySnapshot> _fetchImages() async {
     return FirebaseFirestore.instance
         .collection('images_wonder')
-        .where('wonder_id', isEqualTo: wond.idWonder)
+        .where('wonder_id', isEqualTo: widget.wond.idWonder)
         .get();
   }
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    double height = size.height;
-    double width = size.width;
-    int tailledocuments = 0;
+    final Size size = MediaQuery.of(context).size;
+    final double height = size.height;
+    final double width = size.width;
+    final int tailledocuments = 0;
     //final List<Img> listeimages = images.where((img) => img.wonder == wond).toList();
     const verte = Color(0xff226900);
     return Scaffold(
@@ -92,7 +88,7 @@ class _StoriesState extends State<Sttories> {
               future: _fetchImages(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Something went wrong'));
+                  return const Center(child: Text('Something went wrong'));
                 }
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -102,7 +98,7 @@ class _StoriesState extends State<Sttories> {
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('No images found.'));
+                  return const Center(child: Text('No images found.'));
                 }
 
                 final documents = snapshot.data!.docs;
@@ -115,7 +111,7 @@ class _StoriesState extends State<Sttories> {
                       final data = document.data() as Map<String, dynamic>;
                       return Sttorie(
                         path: data['image_url'],
-                        wonderName: wond.wonderName,
+                        wonderName: widget.wond.wonderName,
                       );
                     });
               },
@@ -164,7 +160,7 @@ class _StoriesState extends State<Sttories> {
                                     borderRadius: BorderRadius.circular(10),
                                     boxShadow: [
                                       BoxShadow(
-                                          color: Colors.black.withOpacity(0.3),
+                                          color: Colors.black.withValues(alpha:0.3),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2))
                                     ],
@@ -172,7 +168,7 @@ class _StoriesState extends State<Sttories> {
                                         ? Colors.white
                                         : const Color.fromARGB(
                                                 255, 231, 231, 231)
-                                            .withOpacity(0.4),
+                                            .withValues(alpha:0.4),
                                   ),
                                 );
                               }),
@@ -181,7 +177,7 @@ class _StoriesState extends State<Sttories> {
                         ],
                       ),
                       Text(
-                        truncate(wond.wonderName),
+                        truncate(widget.wond.wonderName),
                         style: GoogleFonts.lalezar(
                             textStyle: const TextStyle(
                                 fontSize: 20, color: Colors.white)),
@@ -192,7 +188,7 @@ class _StoriesState extends State<Sttories> {
                 Container(
                     height: height / 12,
                     width: width,
-                    color: verte.withOpacity(0.7),
+                    color: verte.withValues(alpha:0.7),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -203,8 +199,8 @@ class _StoriesState extends State<Sttories> {
                                   PageRouteBuilder(
                                     pageBuilder: (context, animation,
                                             secondaryAnimation) =>
-                                        wonder_page(
-                                      wond: wond,
+                                        WonderPage(
+                                      wond: widget.wond,
                                     ),
                                     transitionsBuilder: (context, animation,
                                         secondaryAnimation, child) {
@@ -219,17 +215,17 @@ class _StoriesState extends State<Sttories> {
                                   ));
                             },
                             style: ButtonStyle(
-                              backgroundColor: MaterialStateProperty.all<Color>(
+                              backgroundColor: WidgetStateProperty.all<Color>(
                                   Colors.transparent),
                               foregroundColor:
-                                  MaterialStateProperty.all(Colors.white),
-                              shape: MaterialStateProperty.all<OutlinedBorder>(
+                                  WidgetStateProperty.all(Colors.white),
+                              shape: WidgetStateProperty.all<OutlinedBorder>(
                                   RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(30))),
-                              side: MaterialStateProperty.all<BorderSide>(
+                              side: WidgetStateProperty.all<BorderSide>(
                                   const BorderSide(
                                       color: Colors.white, width: 2.0)),
-                              padding: MaterialStateProperty.all<
+                              padding: WidgetStateProperty.all<
                                       EdgeInsetsGeometry>(
                                   const EdgeInsets.fromLTRB(60, 10, 60, 10)),
                             ),
@@ -255,9 +251,9 @@ class Sttorie extends StatelessWidget {
   const Sttorie({super.key, required this.path, required this.wonderName});
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    double height = size.height;
-    double width = size.width;
+    final Size size = MediaQuery.of(context).size;
+    final double height = size.height;
+    final double width = size.width;
     return Hero(
       tag: "imageWonder$wonderName",
       child: Container(

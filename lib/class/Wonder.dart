@@ -2,9 +2,9 @@ import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/class/classes.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -55,6 +55,9 @@ class Wonder {
   @HiveField(13)
   final bool isreservable;
 
+  @HiveField(14)
+  final String acces;
+
   Wonder(
       {required this.idWonder,
       required this.wonderName,
@@ -69,10 +72,11 @@ class Wonder {
       required this.longitude,
       required this.note,
       required this.categorie,
-      required this.isreservable});
+      required this.isreservable,
+        required this.acces});
 
   factory Wonder.fromDocument(DocumentSnapshot doc) {
-    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Wonder(
         idWonder: doc.id,
         wonderName: data['wonderName'],
@@ -88,6 +92,7 @@ class Wonder {
         note: (data['note'] as num).toDouble(),
         categorie: data['categorie'],
         isreservable: data['isreservable'],
+        acces: data['acces'],
     );
   }
 
@@ -95,10 +100,9 @@ class Wonder {
     this.note = note;
   }
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<double?> getNoteForWonder() async {
-    DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
+    final DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
         .collection('wonders')
         .doc(idWonder)
         .get();
@@ -111,18 +115,17 @@ class Wonder {
 
   Future<List<String>> fetchAvantageIds() async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('avantage_or_inconvenient_wonder')
           .where('wonder_id', isEqualTo: idWonder)
           .get();
 
-      List<String> avantageIds = querySnapshot.docs
+      final List<String> avantageIds = querySnapshot.docs
           .map((doc) => doc['avantage_or_inconvenient_id'] as String)
           .toList();
 
       return avantageIds;
     } catch (e) {
-      print('Error fetching documents: $e');
       return [];
     }
   }
@@ -141,15 +144,14 @@ class Wonder {
       return cachedData;
     }
 
-    List<String> ids = await fetchAvantageIds();
-    print(ids);
+    final List<String> ids = await fetchAvantageIds();
     final querySnapshot = await FirebaseFirestore.instance
         .collection('avantages_or_inconvenients')
         .where('avantage', isEqualTo: true)
         .where(FieldPath.documentId, whereIn: ids)
         .get();
 
-    final avantages = querySnapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+    final avantages = querySnapshot.docs.map((doc) => doc.data()).toList();
     dataCache.setAvantages(cacheKey, avantages);
     return avantages;
   }
@@ -162,14 +164,14 @@ class Wonder {
       return cachedData;
     }
 
-    List<String> ids = await fetchAvantageIds();
+    final List<String> ids = await fetchAvantageIds();
     final querySnapshot = await FirebaseFirestore.instance
         .collection('avantages_or_inconvenients')
         .where('avantage', isEqualTo: false)
         .where(FieldPath.documentId, whereIn: ids)
         .get();
 
-    final inconvenients = querySnapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+    final inconvenients = querySnapshot.docs.map((doc) => doc.data()).toList();
     dataCache.setAvantages(cacheKey, inconvenients);
     return inconvenients;
   }
@@ -191,21 +193,21 @@ class Wonder {
   }
 
   Future<void> addAvis(String content, double note) async {
-    Utilisateur user = await Camwonder().getUserInfo();
-    QuerySnapshot<Map<String, dynamic>> querySnapshot =
+    final Utilisateur user = await Camwonder().getUserInfo();
+    final QuerySnapshot<Map<String, dynamic>> querySnapshot =
     await FirebaseFirestore.instance
         .collection('users')
         .where('id', isEqualTo: AuthService().currentUser!.uid)
         .get();
-    Avis avis = Avis(
+    final Avis avis = Avis(
         idAvis: "id_sera_genere",
         note: note,
         content: content,
         wonder: idWonder,
         user: querySnapshot.docs.first.id,
         userImage: user.profilPath);
-    CollectionReference avisFirebase = FirebaseFirestore.instance.collection('avis');
-    double? ancienNote = await getNoteForWonder();
+    final CollectionReference avisFirebase = FirebaseFirestore.instance.collection('avis');
+    final double? ancienNote = await getNoteForWonder();
 
     if (ancienNote != null) {
       if(ancienNote == 0){
@@ -215,7 +217,7 @@ class Wonder {
             .doc(idWonder)
             .update({'note': note});
       }else{
-        double newNote = (ancienNote + note) / 2;
+        final double newNote = (ancienNote + note) / 2;
 
         await FirebaseFirestore.instance
             .collection('wonders')
@@ -226,20 +228,50 @@ class Wonder {
 
     return avisFirebase
         .add({
-          'note': avis.note,
-          'content': avis.content,
-          'wonder': avis.wonder,
-          'user': avis.user,
-          'userImage': avis.userImage,
-        })
-        .then((value) => print("User Added"))
-        .catchError((error) => print("Failed to add user: $error"));
+      'note': avis.note,
+      'content': avis.content,
+      'wonder': avis.wonder,
+      'user': avis.user,
+      'userImage': avis.userImage,
+    })
+        .then((value) {
+      if (kDebugMode) {
+        print("User Added");
+      }
+    })
+        .catchError((error) {
+      if (kDebugMode) {
+        print("Failed to add user: $error");
+      }
+    });
+  }
+
+
+  Future<void> addSignalement(String content) async {
+    final CollectionReference avisFirebase = FirebaseFirestore.instance.collection('signalement');
+
+
+    return avisFirebase
+        .add({
+      'wonder': wonderName,
+      'content': content,
+    })
+        .then((value) {
+      if (kDebugMode) {
+        print("Signal Added");
+      }
+    })
+        .catchError((error) {
+      if (kDebugMode) {
+        print("Failed to add signal: $error");
+      }
+    });
   }
 
 
   Future<void> addReservation(String numeroTel, int nbrePersonnes, String date) async {
 
-    CollectionReference ReservationFirebase = FirebaseFirestore.instance.collection('reservations');
+    final CollectionReference ReservationFirebase = FirebaseFirestore.instance.collection('reservations');
     return ReservationFirebase
         .add({
       'user': AuthService().currentUser!.uid,
@@ -251,8 +283,16 @@ class Wonder {
       'isvalidate': false,
       'motif': 'Pas encore traité'
     })
-        .then((value) => print("User Added"))
-        .catchError((error) => print("Failed to add user: $error"));
+        .then((value) {
+      if (kDebugMode) {
+        print("User Added");
+      }
+    })
+        .catchError((error) {
+      if (kDebugMode) {
+        print("Failed to add user: $error");
+      }
+    });
   }
 
 
@@ -281,28 +321,26 @@ class Wonder {
 
   Future<QuerySnapshot> getEvenement() async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('evenements')
           .where('idwonder', isEqualTo: idWonder)
           .get();
 
       return querySnapshot;
     } catch (e) {
-      print('Error fetching documents: $e');
       rethrow;  // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
     }
   }
 
   Future<QuerySnapshot> getSimilar() async {
     try {
-      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
           .collection('wonders')
           .where('region', isEqualTo: region).limit(6)
           .get();
 
       return querySnapshot;
     } catch (e) {
-      print('Error fetching documents: $e');
       rethrow;  // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
     }
   }

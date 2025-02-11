@@ -1,18 +1,13 @@
 import 'package:camwonders/auth_pages/debut_inscription.dart';
 import 'package:camwonders/class/Notification.dart';
-import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/pages/NotificationsPage.dart';
-import 'package:camwonders/pages/test.dart';
-import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/widgetGlobal.dart';
 import 'package:flutter/material.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:shimmer/shimmer.dart';
 
 class Menu extends StatefulWidget{
 
@@ -28,43 +23,27 @@ class _MenuState extends State<Menu> {
 
   int _currentPageIndex = 0;
   bool isLoading = false;
-  Utilisateur? _user;
-  bool _isLoading = true;
-  String? _error;
-  String _city = "CAMEROUN";
+  final String _city = "CAMEROUN";
 
   List<Widget> pages = [
-    ListeVue(),
+    const ListeVue(),
     const MapVue(),
   ];
+  final FirebaseMessagingService _firebaseMessagingService =
+  FirebaseMessagingService();
 
 
   @override
   void initState() {
     super.initState();
+    _firebaseMessagingService.initialize(context);
     _pageController = PageController(initialPage: _currentPageIndex);
     loadData();
-    _fetchUserInfo();
-
   }
 
 
 
 
-  Future<void> _fetchUserInfo() async {
-    try {
-      final Utilisateur user = await Camwonder().getUserInfo();
-      setState(() {
-        _user = user;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
 
 
   Future loadData() async{
@@ -107,63 +86,11 @@ class _MenuState extends State<Menu> {
   }
 
 
-  Future<Position> _getUserLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Vérifiez si les services de localisation sont activés.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Les services de localisation sont désactivés.');
-    }
-
-    // Vérifiez les permissions de localisation.
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        return Future.error('Les permissions de localisation sont refusées.');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error('Les permissions de localisation sont refusées de manière permanente.');
-    }
-
-    // Obtenez la position actuelle de l'utilisateur.
-    return await Geolocator.getCurrentPosition();
-  }
-
-
-  Future<String> _getAddressFromLatLng(Position position) async {
-    try {
-      final List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
-      final Placemark place = placemarks[0];
-      return "${place.country}";
-    } catch (e) {
-      return "Impossible d'obtenir l'adresse.";
-    }
-  }
-
-
-  Future<void> _getUserCity() async {
-    try {
-      final Position position = await _getUserLocation();
-      final String city = await _getAddressFromLatLng(position);
-      setState(() {
-        _city = city;
-      });
-    } catch (e) {
-      setState(() {
-        _city = "Impossible d'obtenir la ville.";
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
     final double width = size.width;
+    final userProvider = Provider.of<UserProvider>(context);
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -171,21 +98,8 @@ class _MenuState extends State<Menu> {
         : Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _user != null ? Text(truncate("Salut ${_user!.nom}", 25), style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 15)),) : Shimmer.fromColors(
-              baseColor: Theme.of(context).brightness == Brightness.light ? const Color.fromARGB(255, 215, 215, 215) : const Color.fromARGB(255, 63, 63, 63),
-              highlightColor: Theme.of(context).brightness == Brightness.light ? const Color.fromARGB(255, 240, 240, 240) : const Color.fromARGB(255, 95, 95, 95),
-              child: Container(
-                height: 25,
-                width: 150,
-                decoration: BoxDecoration(
-                  color: Colors.grey,
-                  borderRadius: BorderRadius.circular(10)
-                ),
-              )
-              ),
-            Container(
-              child: Icon(LucideIcons.dot),
-            ),
+            Text(truncate("Salut ${userProvider.nom}", 25), style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 15)),),
+            const Icon(LucideIcons.dot),
             Row(
               children: [
                 const Icon(LucideIcons.mapPin, color: verte, size: 15,),
@@ -196,85 +110,78 @@ class _MenuState extends State<Menu> {
           ],
         ),
         actions: [
-          AuthService().currentUser == null ? Container(
-            child: GestureDetector(
-              onTap: (){
-                 Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => const Debut_Inscription(),
+          AuthService().currentUser == null ? GestureDetector(
+            onTap: (){
+               Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => const Debut_Inscription(),
 
-                  transitionsBuilder: (_,animation,__,child){
-                    return SlideTransition(
-                      position: Tween<Offset> (begin: const Offset(1.0, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut, reverseCurve: Curves.easeInOutBack)),
-                      child: child,
-                    );
-                  },
-                  transitionDuration: const Duration(milliseconds: 500)
-                  ));
+                transitionsBuilder: (_,animation,__,child){
+                  return SlideTransition(
+                    position: Tween<Offset> (begin: const Offset(1.0, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut, reverseCurve: Curves.easeInOutBack)),
+                    child: child,
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 500)
+                ));
 
-                 Provider.of<NotificationProvider>(context, listen: false)
-                     .addNotification("Nouvelle alerte", "Vous avez reçu un message !");
-
-              },
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-                decoration: BoxDecoration(
-                  color: verte,
-                  borderRadius: BorderRadius.circular(10)
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Text("Se connecter", style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 10, color: Colors.white)),),
-                    const Icon(LucideIcons.userPlus, size: 13, color: Colors.white,),
-                  ],
-                ),
+            },
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+              decoration: BoxDecoration(
+                color: verte,
+                borderRadius: BorderRadius.circular(10)
               ),
-            )
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Text("Se connecter", style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 10, color: Colors.white)),),
+                  const Icon(LucideIcons.userPlus, size: 13, color: Colors.white,),
+                ],
+              ),
+            ),
           ) : Container(),
           
-          Container(
-            child: Consumer<NotificationProvider>(
-              builder: (context, notificationProvider, _) {
-                int unreadCount = notificationProvider.notifications
-                    .where((notif) => !notif.isOpened)
-                    .length;
+          Consumer<NotificationProvider>(
+            builder: (context, notificationProvider, _) {
+              final int unreadCount = notificationProvider.notifications
+                  .where((notif) => !notif.isOpened)
+                  .length;
 
-                return Stack(
-                  children: [
-                    IconButton(
-                      icon: Icon(LucideIcons.bellDot, size: 25,),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => NotificationsPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    if (unreadCount > 0) // Affiche le badge uniquement si non lues
-                      Positioned(
-                        right: 8,
-                        top: 2,
-                        child: Container(
-                          padding: EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.amber,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            unreadCount.toString(),
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(LucideIcons.bellDot, size: 25,),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (unreadCount > 0) // Affiche le badge uniquement si non lues
+                    Positioned(
+                      right: 8,
+                      top: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: Colors.amber,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
+                    ),
+                ],
+              );
+            },
           ),
 
 
@@ -323,7 +230,7 @@ class _MenuState extends State<Menu> {
                     width: 2,
                     height: 20,
                     decoration: BoxDecoration(
-                      border: Border.all(width: 1.0, color: verte
+                      border: Border.all(color: verte
                       ),
                     ),
                   ),

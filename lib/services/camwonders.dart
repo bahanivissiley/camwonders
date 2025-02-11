@@ -3,7 +3,11 @@ import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/class/WonderShort.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/src/widgets/framework.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Camwonder {
@@ -24,11 +28,12 @@ class Camwonder {
             .toList());
   }
 
+
   Future<void> createUser(
-      String? nom, String? identifiant, String id, String? profilPath) async {
+      String? nom, String? identifiant, String id, String? profilPath, BuildContext context) async {
     final CollectionReference users = FirebaseFirestore.instance.collection('users');
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    if (await checkIfUserExists(id)) {
+    if (await checkIfUserExists(id, context)) {
       return;
     } else {
       if (profilPath != null) {
@@ -45,8 +50,16 @@ class Camwonder {
               'premium': false,
               'profilPath': profilPath,
             })
-            .then((value) => print("User added successfully!"))
-            .catchError((error) => print("Failed to add user: $error"));
+            .then((value) {
+          if (kDebugMode) {
+            print("User Added");
+          }
+        })
+            .catchError((error) {
+          if (kDebugMode) {
+            print("Failed to add user: $error");
+          }
+        });
       } else {
         await prefs.setString('id', id);
         await prefs.setString('nom', nom!);
@@ -63,14 +76,21 @@ class Camwonder {
               'profilPath':
                   "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a",
             })
-            .then((value) => print("User added successfully!"))
-            .catchError((error) => print("Failed to add user: $error"));
+            .then((value) {
+          if (kDebugMode) {
+            print("User Added");
+          }
+        })
+            .catchError((error) {
+          if (kDebugMode) {
+            print("Failed to add user: $error");
+          }
+        });
       }
     }
   }
 
-  Future<bool> checkIfUserExists(String userId) async {
-    final CollectionReference users = FirebaseFirestore.instance.collection('users');
+  Future<bool> checkIfUserExists(String userId, BuildContext context) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final Utilisateur? user = await getUserByAuthId(AuthService().currentUser!.uid);
     try {
@@ -84,6 +104,11 @@ class Camwonder {
         await prefs.setString('identifiant', user.identifiant);
         await prefs.setBool('premium', user.premium);
         await prefs.setString('profilPath', user.profilPath);
+        if(user.premium){
+          Provider.of<UserProvider>(context, listen: false).setPremium(true);
+        }else{
+          Provider.of<UserProvider>(context, listen: false).setPremium(false);
+        }
         return true;
       } else {
         return false;
@@ -155,7 +180,6 @@ class Camwonder {
 
       return querySnapshot;
     } catch (e) {
-      print('Error fetching documents: $e');
       rethrow; // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
     }
   }
@@ -167,7 +191,6 @@ class Camwonder {
 
       return querySnapshot;
     } catch (e) {
-      print('Error fetching documents: $e');
       rethrow; // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
     }
   }
@@ -212,7 +235,6 @@ class Camwonder {
         return null;
       }
     } catch (e) {
-      print('Erreur lors de la récupération de l\'utilisateur : $e');
       return null;
     }
   }
@@ -253,8 +275,30 @@ class Camwonder {
           return null;
         }
       } catch (e) {
-        print('Erreur lors de la récupération de l\'utilisateur : $e');
         return null;
       }
     }
+
+
+  static Future<void> updatePremiumStatusByFieldId(String userIdField, bool isPremium) async {
+    try {
+      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('id', isEqualTo: userIdField) // Filtre sur le champ "id"
+          .limit(1) // On prend seulement le premier résultat trouvé
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final String docId = querySnapshot.docs.first.id;
+
+        await FirebaseFirestore.instance.collection('users').doc(docId).update({
+          'premium': isPremium,
+        });
+
+      } else {
+      }
+    } catch (e) {
+    }
+  }
+
 }

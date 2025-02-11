@@ -43,9 +43,9 @@ class _InscriptionState extends State<Inscription> {
 
   @override
   Widget build(BuildContext context){
-    Size size = MediaQuery.of(context).size;
-    double height = size.height;
-    double width = size.width;
+    final Size size = MediaQuery.of(context).size;
+    final double height = size.height;
+    final double width = size.width;
     setState(() {
       widthgif = width;
       heightgif = height;
@@ -56,16 +56,16 @@ class _InscriptionState extends State<Inscription> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Container(
-            padding: EdgeInsets.all(50),
+            padding: const EdgeInsets.all(50),
             margin: EdgeInsets.only(top: height/5),
             child: Image.asset("assets/load2.png"),
           ),
           Container(
-            margin: EdgeInsets.all(30),
+            margin: const EdgeInsets.all(30),
             child: Column(
               children: [
                 Center(child: Text("Decouvrez le cameroun dans toute sa splendeur", textAlign: TextAlign.center, style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 30, height: 1.3)),)),
-                SizedBox(height: 20,),
+                const SizedBox(height: 20,),
                 Center(child: Text("Vous rêvez d’explorer des paysages époustouflants, de plonger dans des cultures riches ? Camwonders est là pour transformer votre expérience de voyage.", textAlign: TextAlign.center, style: GoogleFonts.jura(textStyle: const TextStyle(fontSize: 12)),)),
               ],
             ),
@@ -96,10 +96,10 @@ class _InscriptionState extends State<Inscription> {
                 ));
               },
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(verte),
-                foregroundColor: MaterialStateProperty.all(Colors.white),
-                shape: MaterialStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                padding: MaterialStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(0, 12, 0, 12))
+                backgroundColor: WidgetStateProperty.all(verte),
+                foregroundColor: WidgetStateProperty.all(Colors.white),
+                shape: WidgetStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                padding: WidgetStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(0, 12, 0, 12))
               ),
               child: Text("Inscription/Connexion", style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 17)),),
             ),
@@ -108,19 +108,19 @@ class _InscriptionState extends State<Inscription> {
       
           Container(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
-            margin: EdgeInsets.only(bottom: 10),
+            margin: const EdgeInsets.only(bottom: 10),
             width: width,
             child: TextButton(
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all<Color>(Colors.transparent),
-                foregroundColor: MaterialStateProperty.all(verte),
-                shape: MaterialStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(7))),
-                side: MaterialStateProperty.all<BorderSide>(const BorderSide(color: verte, width: 3.0)),
-                padding: MaterialStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(0, 15, 0, 15)),
+                backgroundColor: WidgetStateProperty.all<Color>(Colors.transparent),
+                foregroundColor: WidgetStateProperty.all(verte),
+                shape: WidgetStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(7))),
+                side: WidgetStateProperty.all<BorderSide>(const BorderSide(color: verte, width: 3.0)),
+                padding: WidgetStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(0, 15, 0, 15)),
               ),
               onPressed: (){
                 Navigator.pushAndRemoveUntil(context, PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => MainApp(),
+                  pageBuilder: (context, animation, secondaryAnimation) => const MainApp(),
                   transitionsBuilder: (context, animation, secondaryAnimation, child) {
                     animation = CurvedAnimation(parent: animation, curve: Curves.easeIn);
                     return FadeTransition(opacity: animation, child: child,);

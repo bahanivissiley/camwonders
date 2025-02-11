@@ -43,7 +43,8 @@ class Policies extends StatelessWidget {
             _BulletPoint("Toute tentative de reproduction, modification, distribution ou vente des contenus de l'application sans autorisation est strictement interdite."),
 
             _SectionTitle("3. Propriété intellectuelle"),
-            _BulletPoint("Tout le contenu de CamWonders (textes, images, logos, etc.) est protégé par des droits d'auteur."),
+            _BulletPoint("Tout le contenu de CamWonders (textes, images, logos, etc.) est protégé par des droits d'auteur à part ceux dont la source est mentionné"),
+            _BulletPoint("Tout le contenu que vous proposez à CamWonders (images) vous nous assurez la liberté de droits d'auteurs"),
             _BulletPoint("Vous acceptez de ne pas enfreindre ces droits, y compris en partageant des contenus sans permission."),
 
             _SectionTitle("4. Protection des données personnelles"),

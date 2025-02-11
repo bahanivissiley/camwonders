@@ -35,7 +35,7 @@ class _reservationsState extends State<reservations> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
     return Scaffold(
         appBar: AppBar(
           automaticallyImplyLeading: false,
@@ -52,7 +52,6 @@ class _reservationsState extends State<reservations> {
             SizedBox(
               height: 100,
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Text(
                     "Toutes vos reservations",
@@ -90,7 +89,6 @@ class _reservationsState extends State<reservations> {
                         snapshot.data!.docs.isEmpty) {
                       return Center(
                           child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           SizedBox(
@@ -108,9 +106,9 @@ class _reservationsState extends State<reservations> {
                         shrinkWrap: true,
                         children: snapshot.data!.docs
                             .map((DocumentSnapshot document) {
-                          Map<String, dynamic> data =
+                          final Map<String, dynamic> data =
                               document.data() as Map<String, dynamic>;
-                          Reservations reservation = Reservations(
+                          final Reservations reservation = Reservations(
                               idReservation: document.id,
                               user: data['user'],
                               nbrePersonnes: data['nbrePersonnes'],
@@ -163,7 +161,8 @@ class _FavorisWidgetState extends State<FavorisWidget> {
       longitude: "chargement...",
       note: 0.0,
       categorie: "chargement...",
-      isreservable: false);
+      isreservable: false,
+      acces: "Par voiture");
 
   bool isNetworkImage = false;
 
@@ -181,7 +180,7 @@ class _FavorisWidgetState extends State<FavorisWidget> {
   }
 
   void _loadWond() async {
-    Wonder? wondd =
+    final Wonder? wondd =
         await Camwonder().getWonderById(widget.reservation.idWonder);
     setState(() {
       if (wondd != null) {
@@ -234,7 +233,7 @@ class _FavorisWidgetState extends State<FavorisWidget> {
                     children: [
                       Container(
                           decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.2),
+                              color: Colors.red.withValues(alpha:0.2),
                               borderRadius: BorderRadius.circular(500)),
                           height: 80,
                           width: 80,
@@ -324,7 +323,7 @@ class _FavorisWidgetState extends State<FavorisWidget> {
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border:
-                  Border.all(width: 1.0, color: Colors.grey.withOpacity(0.5))),
+                  Border.all(color: Colors.grey.withValues(alpha:0.5))),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -460,12 +459,12 @@ class _FavorisWidgetState extends State<FavorisWidget> {
                               ))
                 ],
               ),
-              Icon(
+              const Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 20,
                 color: Color(0xff226900),
               ),
-              SizedBox(width: 5),
+              const SizedBox(width: 5),
             ],
           ),
         ),

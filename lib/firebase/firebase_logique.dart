@@ -1,10 +1,9 @@
-//import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:camwonders/auth_pages/suite_inscription.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:crypto/crypto.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,9 +22,9 @@ class AuthService{
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
 
-  Future signInWithPhoneNumber(String phone_number, BuildContext context) async {
+  Future signInWithPhoneNumber(String phoneNumber, BuildContext context) async {
     await _auth.verifyPhoneNumber(
-    phoneNumber: phone_number,
+    phoneNumber: phoneNumber,
     verificationCompleted: (PhoneAuthCredential credential) async {
       await _auth.signInWithCredential(credential);
     },
@@ -37,23 +36,18 @@ class AuthService{
         }
     },
     codeSent: (String verificationId, int? resendToken) {
-      Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => Suite_Inscription(phoneNumber: phone_number, verificationId: verificationId,)));
+      Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) => Suite_Inscription(phoneNumber: phoneNumber, verificationId: verificationId,)));
     },
     codeAutoRetrievalTimeout: (String verificationId) {},
-    timeout: const Duration(seconds: 30),
   );
   }
 
   Future<User?> signInWithGoogle() async {
-    print("Etape 1");
     try {
-      print("Etape 2");
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-      print("Etape 3");
 
       if (googleUser != null) {
-        print("Etape 4");
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
         final AuthCredential credential = GoogleAuthProvider.credential(
@@ -68,12 +62,11 @@ class AuthService{
         return null;  // L'utilisateur a annulé la connexion.
       }
     } on FirebaseAuthException catch (e) {
-      print("Une exception de firebaseAuth");
-      print(e);
+      if (kDebugMode) {
+        print("Erreur : $e");
+      }
       return null;
     } catch (e) {
-      print("Une autre erreur");
-      print(e);
       return null;
     }
   }
@@ -126,18 +119,24 @@ String sha256ofString(String input) {
     await _googleSignIn.signOut();
     dataCache.clearAllCache();
     try {
-      var cacheDir = await getTemporaryDirectory();
+      final cacheDir = await getTemporaryDirectory();
       if (cacheDir.existsSync()) {
         cacheDir.deleteSync(recursive: true);
       }
     } catch (e) {
+      if (kDebugMode) {
+        print("Erreur lors de la suppression du cache : $e");
+      }
     }
 
     // Effacer les Shared Preferences
     try {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.clear();
     } catch (e) {
+      if (kDebugMode) {
+        print("Erreur lors de la suppression du cache : $e");
+      }
     }
 
     // Effacer les données Hive

@@ -31,9 +31,9 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
 
   @override
   Widget build(BuildContext context){
-    Size size = MediaQuery.of(context).size;
-    double height = size.height;
-    double width = size.width;
+    final Size size = MediaQuery.of(context).size;
+    final double height = size.height;
+    final double width = size.width;
     return Scaffold(
       appBar: AppBar(
       ),
@@ -74,8 +74,6 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
                                     ),
                                   ),
                                 ),
-
-                            
                             
                               ],
                             ),
@@ -164,7 +162,7 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
                                   );
 
                                   await Future.delayed(const Duration(seconds: 2));
-                                  Camwonder().createUser(nomControler.text, widget.identifiant, AuthService().currentUser!.uid, AuthService().currentUser!.photoURL);
+                                  Camwonder().createUser(nomControler.text, widget.identifiant, AuthService().currentUser!.uid, AuthService().currentUser!.photoURL, context);
 
                                   showModalBottomSheet(
                                     context: context,
@@ -198,14 +196,14 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
 
                                   await Future.delayed(const Duration(seconds: 2));
 
-                                  Navigator.pushReplacement(context, PageRouteBuilder(
-                                    pageBuilder: (context, animation, secondaryAnimation) => MainApp(),
+                                  Navigator.pushAndRemoveUntil(context, PageRouteBuilder(
+                                    pageBuilder: (context, animation, secondaryAnimation) => const MainApp(),
                                     transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                         animation = CurvedAnimation(parent: animation, curve: Curves.easeIn);
                                         return FadeTransition(opacity: animation, child: child,);
                                       }
-                                    )
-                                  );
+                                    ),
+                                    (Route<dynamic> route) => false);
 
                                 }else{
                                   setState(() {
@@ -233,10 +231,10 @@ class _Fin_InscriptionState extends State<Fin_Inscription> {
                               }
                             },
                             style: ButtonStyle(
-                              backgroundColor: MaterialStateProperty.all(verte),
-                              foregroundColor: MaterialStateProperty.all(Colors.white),
-                              shape: MaterialStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                              padding: MaterialStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(0, 12, 0, 12))
+                              backgroundColor: WidgetStateProperty.all(verte),
+                              foregroundColor: WidgetStateProperty.all(Colors.white),
+                              shape: WidgetStateProperty.all<OutlinedBorder>(RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                              padding: WidgetStateProperty.all<EdgeInsetsGeometry>(const EdgeInsets.fromLTRB(0, 12, 0, 12))
                             ),
                             child: Text("S'inscrire", style: GoogleFonts.lalezar(textStyle: const TextStyle(fontSize: 18)),),
                           ),

@@ -10,10 +10,27 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
+import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:camwonders/class/Notification.dart';
+import 'package:event_bus/event_bus.dart';
+
+final EventBus eventBus = EventBus();
+
+class NotificationEvent {
+  final String? title;
+  final String? body;
+
+  NotificationEvent(this.title, this.body);
+}
+
+// Gestion des messages reçus en arrière-plan
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  eventBus.fire(NotificationEvent(message.notification?.title, message.notification?.body));
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,8 +48,7 @@ void main() async {
 
   await Hive.openBox<Wonder>('favoris_wonder');
 
-  final notificationSettings = await FirebaseMessaging.instance.requestPermission(provisional: true);
-  final fcmToken = await FirebaseMessaging.instance.getToken();
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   FirebaseMessaging.instance.onTokenRefresh
       .listen((fcmToken) {
@@ -73,10 +89,10 @@ class MyApp extends StatelessWidget {
             const BottomAppBarTheme(color: Color(0xffffffff), elevation: 5),
         elevatedButtonTheme: ElevatedButtonThemeData(
             style: ButtonStyle(
-          backgroundColor: const MaterialStatePropertyAll(Color(0xff226900)),
+          backgroundColor: const WidgetStatePropertyAll(Color(0xff226900)),
           foregroundColor:
-              const MaterialStatePropertyAll(Color.fromARGB(255, 255, 255, 255)),
-          shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+              const WidgetStatePropertyAll(Color.fromARGB(255, 255, 255, 255)),
+          shape: WidgetStateProperty.all<RoundedRectangleBorder>(
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
         )),
         inputDecorationTheme: const InputDecorationTheme(
@@ -85,7 +101,7 @@ class MyApp extends StatelessWidget {
         textButtonTheme: TextButtonThemeData(
           style: ButtonStyle(
             foregroundColor:
-            MaterialStateProperty.all<Color>(const Color(0xff226900)),
+            WidgetStateProperty.all<Color>(const Color(0xff226900)),
           ),
         ),
       ),
@@ -101,9 +117,9 @@ class MyApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
             style: ButtonStyle(
                 backgroundColor:
-                    const MaterialStatePropertyAll(Color(0xff226900)),
+                    const WidgetStatePropertyAll(Color(0xff226900)),
                 foregroundColor:
-                    const MaterialStatePropertyAll(Color.fromARGB(255, 0, 0, 0)),
+                    const WidgetStatePropertyAll(Color.fromARGB(255, 0, 0, 0)),
                 shape: WidgetStateProperty.all<RoundedRectangleBorder>(
                     RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6))))),
@@ -117,11 +133,11 @@ class MyApp extends StatelessWidget {
         ),
       ),
       initial: AdaptiveThemeMode.system,
-      builder: (theme, darkTheme) => MaterialApp(
+      builder: (theme, darkTheme) => GetMaterialApp (
         debugShowCheckedModeBanner: false,
         theme: theme,
         darkTheme: darkTheme,
-        home: AuthService().currentUser == null ? const Welcome() : MainApp(),
+        home: AuthService().currentUser == null ? const Welcome() : const MainApp(),
       ),
     );
   }

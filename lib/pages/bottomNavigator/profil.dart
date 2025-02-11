@@ -10,7 +10,6 @@ import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
 import 'package:camwonders/auth_pages/inscription.dart';
-import 'package:camwonders/pages/bottomNavigator/page_favoris.dart';
 import 'package:camwonders/pages/policies.dart';
 import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -48,7 +47,7 @@ class _ProfilState extends State<Profil> {
   }
 
   Future<void> chargercached() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
     devise = prefs.getString('devise')!;
     _selectedDevise = devise;
   }
@@ -67,7 +66,7 @@ class _ProfilState extends State<Profil> {
 
   Future<void> _fetchUserInfo() async {
     try {
-      Utilisateur user = await Camwonder().getUserInfo();
+      final Utilisateur user = await Camwonder().getUserInfo();
       setState(() {
         _user = user;
         _isLoading = false;
@@ -92,19 +91,17 @@ class _ProfilState extends State<Profil> {
     });
 
     if (_image != null) {
-      String fileName =
+      final String fileName =
           _image!.name; // Vous pouvez générer un nom unique si nécessaire
-      File imageFile = File(_image!.path);
+      final File imageFile = File(_image!.path);
       try {
         if (_image!.path !=
             "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a") {
-          print("J'entre dans la suppression");
-          print(profilpath);
           try {
             final storageR = FirebaseStorage.instance.refFromURL(profilpath);
             await storageR.delete();
           } catch (e) {
-            print("Erreur");
+
           }
         }
 
@@ -113,26 +110,22 @@ class _ProfilState extends State<Profil> {
         await storageRef.putFile(imageFile);
 
         // Récupérer l'URL de téléchargement
-        String downloadURL = await storageRef.getDownloadURL();
-        SharedPreferences prefs = await SharedPreferences.getInstance();
+        final String downloadURL = await storageRef.getDownloadURL();
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('profilPath', downloadURL);
         setState(() {
           profilpath = downloadURL;
         });
-        print(_user!.idUser);
-        QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+        final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
             .collection('users')
             .where('id', isEqualTo: _user!.idUser)
             .get();
         for (QueryDocumentSnapshot doc in querySnapshot.docs) {
           await doc.reference.update({'profilPath': downloadURL});
         }
-        print('URL de téléchargement: $downloadURL');
       } catch (e) {
-        print('Erreur lors de l\'upload de l\'image: $e');
       }
 
-      print(_image!.path);
     }
   }
 
@@ -156,11 +149,11 @@ class _ProfilState extends State<Profil> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    return SingleChildScrollView(
+    final Size size = MediaQuery.of(context).size;
+    final userProvider = Provider.of<UserProvider>(context);
+    return _isLoading ? const CircularProgressIndicator() : SingleChildScrollView(
       child: Container(
         padding: EdgeInsets.only(top: MediaQuery.of(context).size.height / 13),
-        //height: MediaQuery.of(context).size.height-65,
         width: MediaQuery.of(context).size.width,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -220,7 +213,7 @@ class _ProfilState extends State<Profil> {
                                 _pickImage();
                               }
                             },
-                            child: Container(
+                            child: SizedBox(
                               width: MediaQuery.of(context).size.height / 5.8,
                               height: MediaQuery.of(context).size.height / 5.8,
                               child: Column(
@@ -327,8 +320,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -385,8 +377,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -433,7 +424,7 @@ class _ProfilState extends State<Profil> {
                       },
                       onSelected: (String devise) async {
                         // Traitez la notification sélectionnée ici
-                        SharedPreferences prefs =
+                        final SharedPreferences prefs =
                             await SharedPreferences.getInstance();
                         prefs.setString("devise", devise);
                         setState(() {
@@ -448,8 +439,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -497,7 +487,7 @@ class _ProfilState extends State<Profil> {
                         }
                       },
                     ),
-                    GestureDetector(
+                    _user!.nom == "Utilisateur inconnu" ? const SizedBox() : userProvider.isPremium ? const SizedBox() : GestureDetector(
                       onTap: () {
                         Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => SubscriptionPage(),
 
@@ -516,8 +506,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -561,7 +550,7 @@ class _ProfilState extends State<Profil> {
                                     Container(
                                         decoration: BoxDecoration(
                                             color:
-                                                Colors.green.withOpacity(0.2),
+                                                Colors.green.withValues(alpha:0.2),
                                             borderRadius:
                                                 BorderRadius.circular(500)),
                                         height: 80,
@@ -625,8 +614,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -670,7 +658,7 @@ class _ProfilState extends State<Profil> {
                                     Container(
                                         decoration: BoxDecoration(
                                             color:
-                                            Colors.green.withOpacity(0.2),
+                                            Colors.green.withValues(alpha:0.2),
                                             borderRadius:
                                             BorderRadius.circular(500)),
                                         height: 60,
@@ -690,21 +678,20 @@ class _ProfilState extends State<Profil> {
                                       height: size.height/10,
                                       child: Image.asset('assets/logo.png'),
                                     ),
-                                    Text(
+                                    const Text(
                                       "Information de l'application",
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 25),
                                     ),
-                                    SizedBox(height: 30,),
-                                    Text(
+                                    const SizedBox(height: 30,),
+                                    const Text(
                                         "Camwonders est une application mobile de tourisme destinée au amoureux de tourisme et de nouvelle expérience tant nationaux, qu'internatinaux. Elle redefinit la focon de decouvrir les lieux au cameroun"),
-                                    SizedBox(height: 30,),
-                                    Row(
+                                    const SizedBox(height: 30,),
+                                    const Row(
                                       children: [
                                         Icon(Icons.perm_contact_calendar_sharp, size: 50,),
                                         Column(
-                                          mainAxisAlignment: MainAxisAlignment.start,
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text('Auteur', style: TextStyle(
@@ -746,8 +733,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -793,7 +779,7 @@ class _ProfilState extends State<Profil> {
                                       Container(
                                           decoration: BoxDecoration(
                                               color:
-                                                  Colors.red.withOpacity(0.2),
+                                                  Colors.red.withValues(alpha:0.2),
                                               borderRadius:
                                                   BorderRadius.circular(500)),
                                           height: 80,
@@ -876,8 +862,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -904,7 +889,7 @@ class _ProfilState extends State<Profil> {
                                       Container(
                                           decoration: BoxDecoration(
                                               color:
-                                                  Colors.red.withOpacity(0.2),
+                                                  Colors.red.withValues(alpha:0.2),
                                               borderRadius:
                                                   BorderRadius.circular(500)),
                                           height: 80,
@@ -987,8 +972,7 @@ class _ProfilState extends State<Profil> {
                         decoration: BoxDecoration(
                           border: Border(
                               bottom: BorderSide(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  width: 1.0)),
+                                  color: Colors.grey.withValues(alpha:0.5))),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,

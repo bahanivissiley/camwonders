@@ -1,14 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camwonders/class/Wonder.dart';
-import 'package:camwonders/class/classes.dart';
 import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -36,14 +33,14 @@ class _page_favorisState extends State<page_favoris> {
   
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
+    final Size size = MediaQuery.of(context).size;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Center(child: Text("MES WONDERS FAVORIS", style: GoogleFonts.lalezar(textStyle: const TextStyle(color: page_favoris.verte, fontSize: 23)),)),
       ),
       body: Container(
-        child: favorisBox == null
+        child: favorisBox.isEmpty
         ? const Center(child: CircularProgressIndicator(),)
         : ValueListenableBuilder(
           valueListenable: favorisBox.listenable(),
@@ -65,12 +62,12 @@ class _page_favorisState extends State<page_favoris> {
             return ListView.builder(
               itemCount: box.length,
               itemBuilder: (BuildContext context, int index){
-                Wonder wonder = box.getAt(index)!;
+                final Wonder wonder = box.getAt(index)!;
                 return Row(
                   children: [
                     GestureDetector(
                       onTap: (){
-                        Navigator.push(context, MaterialPageRoute(builder: ((context) => wonder_page(wond: wonder))));
+                        Navigator.push(context, MaterialPageRoute(builder: ((context) => WonderPage(wond: wonder))));
                       },
                       child: Dismissible(
                         key: Key(wonder.wonderName),
@@ -83,7 +80,7 @@ class _page_favorisState extends State<page_favoris> {
                                 children: [
                                   Container(
                                       decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(0.2),
+                                          color: Colors.red.withValues(alpha:0.2),
                                           borderRadius: BorderRadius.circular(500)
                                       ),
                                       height: 80,
@@ -190,7 +187,7 @@ class _page_favorisState extends State<page_favoris> {
                                 children: [
                                   Container(
                                       decoration: BoxDecoration(
-                                          color: Colors.red.withOpacity(0.2),
+                                          color: Colors.red.withValues(alpha:0.2),
                                           borderRadius: BorderRadius.circular(500)
                                       ),
                                       height: 80,
@@ -280,12 +277,11 @@ class favoris_widget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width*4/5,
-      margin: const EdgeInsets.only(bottom: 10, left: 10, right: 0,),
+      margin: const EdgeInsets.only(bottom: 10, left: 10,),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          width: 1.0,
-          color: Colors.grey.withOpacity(0.5)
+          color: Colors.grey.withValues(alpha:0.5)
         )
       ),
       child: Row(

@@ -7,7 +7,6 @@ import 'package:camwonders/auth_pages/fin_inscription.dart';
 import 'package:camwonders/firebase/firebase_logique.dart';
 import 'package:camwonders/mainapp.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-//import 'package:camwonders/firebase_logique.dart';
 import 'package:flutter/material.dart';
 import 'package:gif/gif.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -59,9 +58,9 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    double height = size.height;
-    double width = size.width;
+    final Size size = MediaQuery.of(context).size;
+    final double height = size.height;
+    final double width = size.width;
     const focusedBorderColor = Color.fromRGBO(23, 171, 144, 1);
     const fillColor = Color.fromRGBO(243, 246, 249, 0);
     const borderColor = Color.fromRGBO(23, 171, 144, 0.4);
@@ -129,7 +128,6 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
           child: Container(
             padding: const EdgeInsets.all(30),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
@@ -154,7 +152,6 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
                         Pinput(
                           controller: pinController,
                           length: 6,
-                          showCursor: true,
                           focusedPinTheme: defaultPinTheme.copyWith(
                             decoration: defaultPinTheme.decoration!.copyWith(
                               borderRadius: BorderRadius.circular(8),
@@ -222,26 +219,13 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
                   width: width,
                   child: TextButton(
                     onPressed: () async {
-                      /*
-                       pinController.addListener(() {
-                          if(pinController.text.length < 6){
-                            setState(() {
-                              validate = false;
-                            });
-                          }else{
-                            setState(() {
-                              validate = true;
-                            });
-                          }
-                       });*/
 
                       validate = true;
 
                       if (validate) {
                         verifyotp(context, pinController.text);
                       } else {
-                        final snackBar = SnackBar(
-                          /// need to set following properties for best effect of awesome_snackbar_content
+                        final snackBar = const SnackBar(
                           elevation: 0,
                           behavior: SnackBarBehavior.floating,
                           backgroundColor: Colors.transparent,
@@ -249,7 +233,6 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
                             title: 'Erreur',
                             message: 'Entrez un code a six chiffres!',
 
-                            /// change contentType to ContentType.success, ContentType.warning or ContentType.help for variants
                             contentType: ContentType.warning,
                           ),
                         );
@@ -261,7 +244,7 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
                     },
                     style: ButtonStyle(
                         backgroundColor:
-                            WidgetStateProperty.all(Color(0xff226900)),
+                            WidgetStateProperty.all(const Color(0xff226900)),
                         foregroundColor: WidgetStateProperty.all(Colors.white),
                         shape: WidgetStateProperty.all<OutlinedBorder>(
                             RoundedRectangleBorder(
@@ -307,13 +290,13 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
           );
         });
 
-    String otp = otpCode;
+    final String otp = otpCode;
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+      final PhoneAuthCredential credential = PhoneAuthProvider.credential(
           verificationId: widget.verificationId, smsCode: otp);
       await _auth.signInWithCredential(credential);
 
-      if (await Camwonder().checkIfUserExists(AuthService().currentUser!.uid)) {
+      if (await Camwonder().checkIfUserExists(AuthService().currentUser!.uid, context)) {
         showModalBottomSheet(
             context: context,
             builder: (BuildContext context) {
@@ -351,7 +334,7 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
         Navigator.pushReplacement(
             context,
             PageRouteBuilder(
-                pageBuilder: (_, __, ___) => MainApp(),
+                pageBuilder: (_, __, ___) => const MainApp(),
                 transitionsBuilder: (_, animation, __, child) {
                   return SlideTransition(
                     position: Tween<Offset>(

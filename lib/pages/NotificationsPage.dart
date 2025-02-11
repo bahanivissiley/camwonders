@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class NotificationsPage extends StatelessWidget {
+  const NotificationsPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Notifications", style: TextStyle(color: Colors.white),), backgroundColor: ListeVue.verte,),
+      appBar: AppBar(title: const Text("Notifications", style: TextStyle(color: Colors.white),), backgroundColor: ListeVue.verte,),
       body: Consumer<NotificationProvider>(
         builder: (context, notificationProvider, _) {
           return ListView.builder(
@@ -23,7 +25,7 @@ class NotificationsPage extends StatelessWidget {
                 title: Text(notification.title),
                 subtitle: Text(notification.message),
                 trailing: IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
+                  icon: const Icon(Icons.delete, color: Colors.red),
                   onPressed: () {
                     notificationProvider.removeNotification(notification.id);
                   },
@@ -51,7 +53,7 @@ class NotificationsPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("Fermer"),
+              child: const Text("Fermer"),
             ),
           ],
         );

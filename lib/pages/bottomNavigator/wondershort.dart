@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/Wonder.dart';
@@ -10,12 +8,14 @@ import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/services/logique.dart';
+import 'package:camwonders/widgetGlobal.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:carousel_slider/carousel_controller.dart' as carousel_slider;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 
@@ -74,7 +74,9 @@ class _WondershortState extends State<Wondershort> {
 
   void _addVideoController(WonderShort wonderShort) async {
     try {
-      final VideoPlayerController controller = VideoPlayerController.network(wonderShort.videoPath);
+      final VideoPlayerController controller =
+      VideoPlayerController.networkUrl(Uri.parse(wonderShort.videoPath));
+
       await controller.initialize();
       if (!mounted) return; // Vérifier si le widget est toujours monté
 
@@ -254,7 +256,7 @@ class _VideoShortState extends State<VideoShort> {
   Widget _buildContent() {
     if (_isLoading) {
       // Afficher un indicateur de chargement pendant le chargement des données
-      return Center(
+      return const Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     } else if (_errorMessage != null) {
@@ -262,7 +264,7 @@ class _VideoShortState extends State<VideoShort> {
       return Center(
         child: Text(
           _errorMessage!,
-          style: TextStyle(color: Colors.white, fontSize: 16),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
           textAlign: TextAlign.center,
         ),
       );
@@ -284,11 +286,11 @@ class PostContent extends StatefulWidget {
   final VideoPlayerController controller;
 
   const PostContent({
-    Key? key,
+    super.key,
     required this.wondshort,
     required this.wonder,
     required this.controller,
-  }) : super(key: key);
+  });
 
   @override
   State<PostContent> createState() => _PostContentState();
@@ -309,7 +311,7 @@ class _PostContentState extends State<PostContent> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Container(
+                SizedBox(
                   width: MediaQuery.of(context).size.width * 5 / 7,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,11 +348,10 @@ class _PostContentState extends State<PostContent> {
                     ],
                   ),
                 ),
-                Container(
+                SizedBox(
                   width: MediaQuery.of(context).size.width / 6,
                   height: MediaQuery.of(context).size.height / 3,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       Container(
@@ -367,7 +368,7 @@ class _PostContentState extends State<PostContent> {
                               context,
                               PageRouteBuilder(
                                 pageBuilder: (_, __, ___) =>
-                                    wonder_page(wond: widget.wonder),
+                                    WonderPage(wond: widget.wonder),
                                 transitionsBuilder: (_, animation, __, child) {
                                   return SlideTransition(
                                     position: Tween<Offset>(
@@ -460,7 +461,8 @@ class _PostContentState extends State<PostContent> {
                             borderRadius: BorderRadius.circular(100)),
                         child: IconButton(
                           onPressed: () {
-                            // Handle share functionality
+                            //Share.share('check out my website https://example.com');
+                            Share.share("J'ai decouvert sur l'application camwonders le lieu : ${widget.wonder.wonderName}\n \n Description : ${widget.wonder.description}\n \n Télécharger l\'application : https://www.camwonders.com");
                           },
                           icon:
                           const Icon(Icons.share, color: PostContent.verte),
@@ -494,35 +496,16 @@ class CommentWidget extends StatefulWidget {
 }
 
 class _CommentWidgetState extends State<CommentWidget> {
-  Utilisateur? _user;
-  String username = "Chargement...";
-  bool _isLoading = true;
-  String? _error;
   final TextEditingController _controllerComment = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchUserInfo();
-  }
-
-  Future<void> _fetchUserInfo() async {
-    try {
-      final Utilisateur user = await Camwonder().getUserInfo();
-      setState(() {
-        _user = user;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     return Container(
       padding: const EdgeInsets.all(0),
       decoration: BoxDecoration(
@@ -568,7 +551,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                           if (snapshot.connectionState ==
                               ConnectionState.waiting) {
                             return const SingleChildScrollView(
-                              child: const Column(
+                              child: Column(
                                 children: [
                                   CircularProgressIndicator(
                                       color: Color(0xff226900))
@@ -643,7 +626,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                     borderRadius: BorderRadius.circular(500),
                     child: CachedNetworkImage(
                       cacheManager: CustomCacheManagerLong(),
-                      imageUrl: _user!.profilPath,
+                      imageUrl: userProvider.profilPath,
                       placeholder: (context, url) => const Center(
                           child: CircularProgressIndicator(
                         color: Color(0xff226900),

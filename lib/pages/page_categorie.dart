@@ -1,5 +1,4 @@
 import 'package:camwonders/auth_pages/debut_inscription.dart';
-import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/pages/AbonnementPage.dart';
 import 'package:camwonders/pages/bottomNavigator/page_favoris.dart';
 import 'package:camwonders/pages/bottomNavigator/reservations.dart';
@@ -24,15 +23,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-class page_categorie extends StatefulWidget {
+class PageCategorie extends StatefulWidget {
   final Categorie cat;
-  const page_categorie({super.key, required this.cat});
+  const PageCategorie({super.key, required this.cat});
 
   @override
-  State<page_categorie> createState() => _page_categorieState();
+  State<PageCategorie> createState() => _PageCategorieState();
 }
 
-class _page_categorieState extends State<page_categorie> {
+class _PageCategorieState extends State<PageCategorie> {
   int _selectedItem = 5;
   static const verte = Color(0xff226900);
   late final Stream<QuerySnapshot> listewonderscat;
@@ -67,15 +66,17 @@ class _page_categorieState extends State<page_categorie> {
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
+    final wonderProvider = Provider.of<WondersProvider>(context);
+    wonderProvider.loadCategorie(widget.cat.categoryName);
     final List<Widget> pages = [
       const Menu(),
       const reservations(),
       const Wondershort(),
       const page_favoris(),
       const Profil(),
-      wondersBody(
+      WondersBody(
         size: size,
-        listewonderscat: listewonderscat,
+        listewonderscat: wonderProvider.wondersStream,
         cat: widget.cat,
       ),
     ];
@@ -109,7 +110,7 @@ class _page_categorieState extends State<page_categorie> {
                               borderRadius: BorderRadius.circular(5),
                               color: Theme.of(context).brightness ==
                                       Brightness.light
-                                  ? Colors.grey.withOpacity(0.3)
+                                  ? Colors.grey.withValues(alpha:0.3)
                                   : const Color.fromARGB(255, 56, 56, 56),
                             )
                           : null,
@@ -146,7 +147,7 @@ class _page_categorieState extends State<page_categorie> {
                               borderRadius: BorderRadius.circular(5),
                               color: Theme.of(context).brightness ==
                                       Brightness.light
-                                  ? Colors.grey.withOpacity(0.3)
+                                  ? Colors.grey.withValues(alpha:0.3)
                                   : const Color.fromARGB(255, 56, 56, 56),
                             )
                           : null,
@@ -183,7 +184,7 @@ class _page_categorieState extends State<page_categorie> {
                               borderRadius: BorderRadius.circular(5),
                               color: Theme.of(context).brightness ==
                                       Brightness.light
-                                  ? Colors.grey.withOpacity(0.3)
+                                  ? Colors.grey.withValues(alpha:0.3)
                                   : const Color.fromARGB(255, 56, 56, 56),
                             )
                           : null,
@@ -220,7 +221,7 @@ class _page_categorieState extends State<page_categorie> {
                               borderRadius: BorderRadius.circular(5),
                               color: Theme.of(context).brightness ==
                                       Brightness.light
-                                  ? Colors.grey.withOpacity(0.3)
+                                  ? Colors.grey.withValues(alpha:0.3)
                                   : const Color.fromARGB(255, 56, 56, 56),
                             )
                           : null,
@@ -257,7 +258,7 @@ class _page_categorieState extends State<page_categorie> {
                               borderRadius: BorderRadius.circular(5),
                               color: Theme.of(context).brightness ==
                                       Brightness.light
-                                  ? Colors.grey.withOpacity(0.3)
+                                  ? Colors.grey.withValues(alpha:0.3)
                                   : const Color.fromARGB(255, 56, 56, 56),
                             )
                           : null,
@@ -289,8 +290,8 @@ class _page_categorieState extends State<page_categorie> {
   }
 }
 
-class wondersBody extends StatefulWidget {
-  wondersBody({
+class WondersBody extends StatefulWidget {
+  WondersBody({
     super.key,
     required this.size,
     required this.listewonderscat,
@@ -302,10 +303,10 @@ class wondersBody extends StatefulWidget {
   final Categorie cat;
 
   @override
-  State<wondersBody> createState() => _wondersBodyState();
+  State<WondersBody> createState() => _WondersBodyState();
 }
 
-class _wondersBodyState extends State<wondersBody> {
+class _WondersBodyState extends State<WondersBody> {
 
   final TextEditingController _controller = TextEditingController();
 
@@ -315,7 +316,6 @@ class _wondersBodyState extends State<wondersBody> {
   void initState() {
     super.initState();
     loadData();
-    widget.listewonderscat = widget.cat.getWonders();
   }
 
   Future loadData() async {
@@ -333,16 +333,12 @@ class _wondersBodyState extends State<wondersBody> {
   Future<void> _handleRefresh() async {
     await Future.delayed(const Duration(milliseconds: 600));
     setState(() {});
-    widget.listewonderscat = FirebaseFirestore.instance
-        .collection('wonders')
-        .where('categorie', isEqualTo: widget.cat.categoryName)
-        .snapshots();
   }
 
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
-    final wondersProvider = Provider.of<WondersProvider>(context);
+    final userProvider = Provider.of<UserProvider>(context);
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0.0,
@@ -350,7 +346,7 @@ class _wondersBodyState extends State<wondersBody> {
         actions: [
           AuthService().currentUser == null
               ? Container(
-            margin: EdgeInsets.only(right: 10),
+            margin: const EdgeInsets.only(right: 10),
                   child: GestureDetector(
                   onTap: () {
                     Navigator.pushReplacement(
@@ -417,7 +413,7 @@ class _wondersBodyState extends State<wondersBody> {
                       width: size.width * 8 / 11,
                       padding: const EdgeInsets.only(left: 20),
                       decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.2),
+                          color: Colors.grey.withValues(alpha:0.2),
                           borderRadius: BorderRadius.circular(50)),
                       child: TextField(
                         controller: _controller,
@@ -483,13 +479,13 @@ class _wondersBodyState extends State<wondersBody> {
               child: widget.listewonderscat.length != 0
                   ? LiquidPullToRefresh(
                       onRefresh: _handleRefresh,
-                      color: _page_categorieState.verte,
+                      color: _PageCategorieState.verte,
                       backgroundColor: Colors.white,
                       height: 50,
                       showChildOpacityTransition: false,
                       springAnimationDurationInMilliseconds: 700,
                       child: StreamBuilder<QuerySnapshot>(
-                        stream: wondersProvider.wondersStream,
+                        stream: widget.listewonderscat,
                         builder: (BuildContext context,
                             AsyncSnapshot<QuerySnapshot> snapshot) {
                           if (snapshot.hasError) {
@@ -546,15 +542,16 @@ class _wondersBodyState extends State<wondersBody> {
                                     longitude: document['longitude'],
                                     note: (document['note'] as num).toDouble(),
                                     categorie: document['categorie'],
-                                    isreservable: document['isreservable']);
+                                    isreservable: document['isreservable'],
+                                    acces: document['acces']);
                                 return GestureDetector(
                                   onTap: () {
-                                    wond.free ? Navigator.push(
+                                    (userProvider.isPremium || wond.free) ? Navigator.push(
                                       context,
                                       PageRouteBuilder(
                                           pageBuilder: (context, animation,
                                               secondaryAnimation) =>
-                                              wonder_page(wond: wond),
+                                              WonderPage(wond: wond),
                                           transitionDuration:
                                           const Duration(milliseconds: 500),
                                           transitionsBuilder: (context, animation,
@@ -575,7 +572,7 @@ class _wondersBodyState extends State<wondersBody> {
                                       ? shimmerWonder(
                                           width: size.width,
                                         )
-                                      : wonderWidget(
+                                      : WonderWidget(
                                           size: size, wonderscat: wond),
                                 );
                               });
@@ -603,8 +600,8 @@ class _wondersBodyState extends State<wondersBody> {
   }
 }
 
-class wonderWidget extends StatefulWidget {
-  const wonderWidget({
+class WonderWidget extends StatefulWidget {
+  const WonderWidget({
     super.key,
     required this.size,
     required this.wonderscat,
@@ -614,13 +611,13 @@ class wonderWidget extends StatefulWidget {
   final Wonder wonderscat;
 
   @override
-  State<wonderWidget> createState() => _wonderWidgetState();
+  State<WonderWidget> createState() => _WonderWidgetState();
 }
 
 // ignore: camel_case_types
-class _wonderWidgetState extends State<wonderWidget>
+class _WonderWidgetState extends State<WonderWidget>
     with SingleTickerProviderStateMixin {
-  bool is_like = false;
+  bool isLike = false;
   late Box<Wonder> favorisBox;
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -629,10 +626,10 @@ class _wonderWidgetState extends State<wonderWidget>
   void initState() {
     super.initState();
     favorisBox = Hive.box<Wonder>('favoris_wonder');
-    final bool estPresent = favorisBox.values.any((wonder_de_la_box) =>
-        wonder_de_la_box.idWonder == widget.wonderscat.idWonder);
+    final bool estPresent = favorisBox.values.any((wonderDeLaBox) =>
+    wonderDeLaBox.idWonder == widget.wonderscat.idWonder);
     if (estPresent) {
-      is_like = true;
+      isLike = true;
     }
 
     _controller = AnimationController(
@@ -679,7 +676,7 @@ class _wonderWidgetState extends State<wonderWidget>
         decoration: BoxDecoration(
           border: Border(
               bottom:
-                  BorderSide(color: Colors.grey.withOpacity(0.5))),
+                  BorderSide(color: Colors.grey.withValues(alpha:0.5))),
         ),
         child: Column(
           children: [
@@ -696,7 +693,7 @@ class _wonderWidgetState extends State<wonderWidget>
                       margin: const EdgeInsets.fromLTRB(15, 15, 15, 0),
                       child: Stack(
                         children: [
-                          Container(
+                          SizedBox(
                             height: 250,
                             width: widget.size.width,
                             child: ClipRRect(
@@ -719,9 +716,13 @@ class _wonderWidgetState extends State<wonderWidget>
                           (userProvider.isPremium || widget.wonderscat.free)
                               ? const SizedBox()  // Un widget vide au lieu d'un Center inutile
                               : Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(15),
+                              color: Colors.black.withValues(alpha:0.6),
+                            ),
                             height: 250,
                             width: widget.size.width,
-                            color: Colors.black.withOpacity(0.6),
+
                             child: const Icon(Icons.lock, size: 100, color: Colors.white),
                           ),
 
@@ -742,13 +743,13 @@ class _wonderWidgetState extends State<wonderWidget>
                             onPressed: () {
                               if (AuthService().currentUser != null) {
                                 setState(() {
-                                  if (is_like) {
-                                    is_like = false;
+                                  if (isLike) {
+                                    isLike = false;
                                     Logique().supprimerFavorisWonder(
                                         favorisBox.length - 1);
                                   } else {
                                     SetFavorisWonder(widget.wonderscat);
-                                    is_like = true;
+                                    isLike = true;
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(SnackBar(
                                       content: Container(
@@ -774,25 +775,24 @@ class _wonderWidgetState extends State<wonderWidget>
                                     context: context,
                                     builder: (BuildContext context) {
                                       return AlertDialog(
-                                        title: Container(
-                                            child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.end,
-                                          children: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.of(context).pop(),
-                                              child: const Text("Ignorer",
-                                                  style: TextStyle(
-                                                      decoration: TextDecoration
-                                                          .underline)),
-                                            )
-                                          ],
-                                        )),
+                                        title: Row(
+                                                                                  mainAxisAlignment:
+                                          MainAxisAlignment.end,
+                                                                                  children: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(),
+                                          child: const Text("Ignorer",
+                                              style: TextStyle(
+                                                  decoration: TextDecoration
+                                                      .underline)),
+                                        )
+                                                                                  ],
+                                                                                ),
                                         content: Column(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Container(
+                                            SizedBox(
                                                 //width: 20,
                                                 height: 100,
                                                 child: Image.asset(
@@ -834,14 +834,14 @@ class _wonderWidgetState extends State<wonderWidget>
 
                               _controller.forward();
                             },
-                            icon: is_like
+                            icon: isLike
                                 ? const Icon(
                                     Icons.favorite_rounded,
                                     color: Color.fromARGB(255, 238, 75, 63),
                                     size: 30,
                                     shadows: [
                                       BoxShadow(
-                                        offset: const Offset(-1, -1),
+                                        offset: Offset(-1, -1),
                                         color: Colors.white,
                                       )
                                     ],
@@ -853,7 +853,7 @@ class _wonderWidgetState extends State<wonderWidget>
                                     shadows: [
                                       BoxShadow(
                                         offset: const Offset(3, 3),
-                                        color: Colors.black.withOpacity(0.5),
+                                        color: Colors.black.withValues(alpha:0.5),
                                         blurRadius: 7,
                                       )
                                     ],
