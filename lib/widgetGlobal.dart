@@ -53,7 +53,6 @@ class FilterButton extends StatelessWidget {
 }
 
 
-
 class WondersProvider with ChangeNotifier {
   Stream<QuerySnapshot> _wondersStream = FirebaseFirestore.instance.collection('wonders').snapshots();
   String _searchQuery = '';
@@ -61,7 +60,7 @@ class WondersProvider with ChangeNotifier {
   Stream<QuerySnapshot> get wondersStream => _wondersStream;
   String get searchQuery => _searchQuery;
 
-  void loadCategorie(String categorieName){
+  void loadCategorie(String categorieName) {
     _wondersStream = FirebaseFirestore.instance
         .collection('wonders')
         .where('categorie', isEqualTo: categorieName)
@@ -69,15 +68,16 @@ class WondersProvider with ChangeNotifier {
   }
 
   void applyFilters(String? selectedForfait, String? region, String? ville, String? categorie) {
-    // Commencer avec une référence de base à la collection 'wonders'
-    Query query = FirebaseFirestore.instance.collection('wonders').where('categorie', isEqualTo: categorie);
+    Query query = FirebaseFirestore.instance.collection('wonders');
 
-    // Appliquer les filtres uniquement si les paramètres sont fournis
-    if (selectedForfait == 'Payants') {
-      query = query.where('free', isEqualTo: false);
+    // Appliquer les filtres
+    if (categorie != null) {
+      query = query.where('categorie', isEqualTo: categorie);
     }
 
-    if (selectedForfait == 'Non payants') {
+    if (selectedForfait == 'Payants') {
+      query = query.where('free', isEqualTo: false);
+    } else if (selectedForfait == 'Non payants') {
       query = query.where('free', isEqualTo: true);
     }
 
@@ -89,21 +89,30 @@ class WondersProvider with ChangeNotifier {
       query = query.where('city', isEqualTo: ville);
     }
 
+    print("Etape 3");
+
     // Appliquer la recherche si un terme de recherche est présent
     if (_searchQuery.isNotEmpty) {
-      query = query.where('wonderNameLower', isGreaterThanOrEqualTo: _searchQuery).where('wonderNameLower', isLessThan: '${_searchQuery}z');
+      print("Etape 4");
+      query = query.where('wonderNameLower', isGreaterThanOrEqualTo: _searchQuery)
+          .where('wonderNameLower', isLessThan: '${_searchQuery}z');
+
+      print(query.count().toString());
     }
 
     // Mettre à jour le Stream avec la nouvelle requête
     _wondersStream = query.snapshots();
+    print("Etape 5");
+    print(_wondersStream.first.toString());
 
-    // Notifier les écouteurs que les données ont changé
     notifyListeners();
   }
 
   void setSearchQuery(String query) {
+    print("Etape 2");
+    print(query);
     _searchQuery = query;
-    applyFilters(null, null, null, null); // Réappliquer les filtres avec la nouvelle requête de recherche
+    applyFilters(null, null, null, null); // Vous pouvez passer des valeurs si nécessaire
   }
 }
 

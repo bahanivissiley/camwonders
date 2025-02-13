@@ -34,17 +34,11 @@ class PageCategorie extends StatefulWidget {
 class _PageCategorieState extends State<PageCategorie> {
   int _selectedItem = 5;
   static const verte = Color(0xff226900);
-  late final Stream<QuerySnapshot> listewonderscat;
 
   @override
   void initState() {
     super.initState();
     _verifyConnection();
-    setState(() {});
-    listewonderscat = FirebaseFirestore.instance
-        .collection('wonders')
-        .where('categorie', isEqualTo: widget.cat.categoryName)
-        .snapshots();
   }
 
   void _verifyConnection() async {
@@ -67,7 +61,6 @@ class _PageCategorieState extends State<PageCategorie> {
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
     final wonderProvider = Provider.of<WondersProvider>(context);
-    wonderProvider.loadCategorie(widget.cat.categoryName);
     final List<Widget> pages = [
       const Menu(),
       const reservations(),
@@ -428,7 +421,8 @@ class _WondersBodyState extends State<WondersBody> {
                             textStyle: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.bold)),
                         onChanged: (value) {
-                          context.read<WondersProvider>().setSearchQuery(value.toLowerCase());
+                          Provider.of<WondersProvider>(context, listen: false).setSearchQuery(value.toLowerCase());
+
                         },
                       ),
                     ),
@@ -517,7 +511,7 @@ class _WondersBodyState extends State<WondersBody> {
                                       ? Image.asset('assets/vide_light.png')
                                       : Image.asset('assets/vide_dark.png'),
                                 ),
-                                const Text("Vide, aucun element !")
+                                const Text("Vide, pas de wonder !")
                               ],
                             ));
                           }
@@ -1132,6 +1126,8 @@ class FilterDialogState extends State<FilterDialog> {
           onPressed: () {
             final wondersProvider = Provider.of<WondersProvider>(context, listen: false);
             wondersProvider.applyFilters(_selectedForfait, _selectedRegion, _selectedCity, widget.cat.categoryName);
+            setState(() {
+            });
             Navigator.of(context).pop();
           },
           child: const Text('Appliquer'),

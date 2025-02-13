@@ -86,6 +86,7 @@ dependencies:
   cinetpay: ^1.0.8
   get: ^4.6.6
   event_bus: ^2.0.1
+  flutter_tts: ^4.2.2
 
 dev_dependencies:
   flutter_test:

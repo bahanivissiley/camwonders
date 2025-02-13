@@ -145,6 +145,7 @@ class _ListeVueState extends State<ListeVue> {
     final Size size = MediaQuery.of(context).size;
     final double width = size.width;
     final userProvider = Provider.of<UserProvider>(context);
+    final wonderProvider = Provider.of<WondersProvider>(context);
     return SingleChildScrollView(
       child: SizedBox(
         child: Column(
@@ -522,6 +523,7 @@ class _ListeVueState extends State<ListeVue> {
                 children: [
                   TextButton(
                       onPressed: (){
+                        wonderProvider.loadCategorie(cats[select_cat].categoryName);
                         Navigator.push(
                             context,
                             PageRouteBuilder(

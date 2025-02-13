@@ -1478,7 +1478,7 @@ class _WonderPageState extends State<WonderPage> {
 
                         loadVal.addListener(() {
                           if (loadVal.value != null) {
-                            Navigator.of(context).pop(); // Fermer le modal
+                            Navigator.of(context).pop();
                           }
                         });
                       }
@@ -1785,11 +1785,8 @@ class _WonderPageState extends State<WonderPage> {
                       context,
                       PageRouteBuilder(
                           pageBuilder: (_, __, ___) => MapScreen(
-                                userLong: userLong,
-                                userLat: userLat,
                                 endLat: double.parse(widget.wond.latitude),
                                 endLong: double.parse(widget.wond.longitude),
-                                distanceKm: distanceKm,
                               ),
                           transitionsBuilder: (_, animation, __, child) {
                             return SlideTransition(
@@ -2350,11 +2347,17 @@ class _GuideWidgetState extends State<GuideWidget> {
                     style: GoogleFonts.lalezar(
                         textStyle: const TextStyle(fontSize: 13)),
                   ),
-                  Text(
-                    "Guide certifié",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.jura(
-                        textStyle: const TextStyle(fontSize: 10)),
+                  Row(
+                    children: [
+                      Text(
+                        "Guide certifié",
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.jura(
+                            textStyle: const TextStyle(fontSize: 10)),
+                      ),
+                      const SizedBox(width: 5,),
+                      const Icon(LucideIcons.shieldCheck)
+                    ],
                   )
                 ],
               )
@@ -2502,6 +2505,7 @@ class GuidesList extends StatefulWidget {
 class _GuidesListState extends State<GuidesList> {
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     return StreamBuilder<QuerySnapshot>(
       stream: widget.wond.getGuide(),
       builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -2550,7 +2554,7 @@ class _GuidesListState extends State<GuidesList> {
               return SizedBox(
                 child: GestureDetector(
                   onTap: () {
-                    if(widget.wond.free){
+                    if(widget.wond.free || userProvider.isPremium){
                       Navigator.push(
                           context,
                           PageRouteBuilder(
@@ -2619,6 +2623,7 @@ class _EvenementListState extends State<EvenementList> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
     return FutureBuilder<QuerySnapshot>(
         future: widget.wond.getEvenement(),
         builder: (BuildContext context,
@@ -2662,7 +2667,7 @@ class _EvenementListState extends State<EvenementList> {
                       date: document['date']);
                   return GestureDetector(
                     onTap: () {
-                      if(widget.wond.free){
+                      if(widget.wond.free || userProvider.isPremium){
                         Navigator.push(
                             context,
                             PageRouteBuilder(
