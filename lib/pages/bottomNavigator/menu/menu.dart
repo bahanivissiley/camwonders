@@ -1,7 +1,7 @@
 import 'package:camwonders/auth_pages/debut_inscription.dart';
 import 'package:camwonders/class/Notification.dart';
 import 'package:camwonders/pages/NotificationsPage.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/widgetGlobal.dart';
 import 'package:flutter/material.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
@@ -29,14 +29,11 @@ class _MenuState extends State<Menu> {
     const ListeVue(),
     const MapVue(),
   ];
-  final FirebaseMessagingService _firebaseMessagingService =
-  FirebaseMessagingService();
 
 
   @override
   void initState() {
     super.initState();
-    _firebaseMessagingService.initialize(context);
     _pageController = PageController(initialPage: _currentPageIndex);
     loadData();
   }

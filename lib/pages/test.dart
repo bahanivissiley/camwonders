@@ -25,9 +25,7 @@ class _MapScreenState extends State<MapScreen> {
   MapController mapController = MapController();
   Position? _currentPosition;
   double _distanceKm = 0.0;
-  String _eta = "Calcul en cours...";
-  List<String> _instructions = [];
-  bool _isSpeaking = false;
+  String _eta = "...";
   bool _voiceEnabled = true;
   final FlutterTts flutterTts = FlutterTts();
   StreamSubscription<Position>? _positionStreamSubscription;
@@ -71,13 +69,13 @@ class _MapScreenState extends State<MapScreen> {
     _positionStreamSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Économie de batterie (mise à jour tous les 10m)
+        distanceFilter: 10,
       ),
     ).listen((Position position) {
       setState(() {
         _currentPosition = position;
       });
-      _getRoute(); // Recalcul de l'itinéraire
+      _getRoute();
     });
   }
 
@@ -105,33 +103,13 @@ class _MapScreenState extends State<MapScreen> {
         points = coordinates.map<LatLng>((coord) => LatLng(coord[1], coord[0])).toList();
         _distanceKm = distanceMeters / 1000;
         _eta = "${(durationSeconds / 60).toStringAsFixed(0)} min";
-        _instructions = steps.map((step) => step["instruction"].toString()).toList();
       });
 
-      if (_voiceEnabled) {
-        _speakInstructions();
-      }
     }
   }
 
-  /// Lecture des instructions vocalement
-  Future<void> _speakInstructions() async {
-    if (_isSpeaking) return;
-    _isSpeaking = true;
 
-    flutterTts.setLanguage("fr-FR");
-    flutterTts.setSpeechRate(0.8); // Réglage du débit vocal (optionnel)
-    flutterTts.setPitch(1.0); // Réglage du ton (optionnel)
 
-    for (String instruction in _instructions) {
-      await flutterTts.speak(instruction);
-      await Future.delayed(const Duration(seconds: 5)); // Pause entre les instructions
-    }
-
-    _isSpeaking = false;
-  }
-
-  /// Partage de l'itinéraire
   void _shareRoute() {
     final String shareText =
         "🚗 Itinéraire : \n- Distance : ${_distanceKm.toStringAsFixed(2)} km\n- Temps estimé : $_eta\n- Destination : https://www.google.com/maps/search/?api=1&query=${widget.endLat},${widget.endLong}";
@@ -144,16 +122,6 @@ class _MapScreenState extends State<MapScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Navigation en temps réel"),
-        actions: [
-          IconButton(
-            icon: Icon(_voiceEnabled ? Icons.volume_up : Icons.volume_off),
-            onPressed: () {
-              setState(() {
-                _voiceEnabled = !_voiceEnabled;
-              });
-            },
-          ),
-        ],
       ),
       body: _currentPosition == null
           ? const Center(child: CircularProgressIndicator())
@@ -197,6 +165,7 @@ class _MapScreenState extends State<MapScreen> {
       ),
       floatingActionButton: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton.extended(
             onPressed: _shareRoute,

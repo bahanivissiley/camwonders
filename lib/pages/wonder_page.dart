@@ -12,12 +12,10 @@ import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/class/classes.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:camwonders/widgetGlobal.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
@@ -34,6 +32,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_view/photo_view.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class WonderPage extends StatefulWidget {
   final Wonder wond;
@@ -59,7 +58,6 @@ class _WonderPageState extends State<WonderPage> {
   bool isLike = false;
   bool isKeyboardVisible = false;
   late Box<Wonder> favorisBox;
-  late final Future<QuerySnapshot> images;
   List<LatLng> points = [];
   double distanceKm = 0.0;
   MapController mapController = MapController();
@@ -73,10 +71,6 @@ class _WonderPageState extends State<WonderPage> {
     _getCurrentLocation();
     mapController = MapController();
     getRoute();
-    images = FirebaseFirestore.instance
-        .collection('images_wonder')
-        .where('wonder_id', isEqualTo: widget.wond.idWonder)
-        .get();
     favorisBox = Hive.box<Wonder>('favoris_wonder');
     final bool estPresent = favorisBox.values
         .any((wonderdelaBox) => wonderdelaBox.idWonder == widget.wond.idWonder);
@@ -203,12 +197,11 @@ class _WonderPageState extends State<WonderPage> {
     }
   }
 
-  Future<void> _uploadImageToFirebase() async {
+  Future<void> _uploadImageToSupabase() async {
     try {
       showDialog(
         context: context,
-        barrierDismissible:
-        false, // Empêche la fermeture du modal en cliquant à l'extérieur
+        barrierDismissible: false, // Empêche la fermeture du modal en cliquant à l'extérieur
         builder: (BuildContext context) {
           return const AlertDialog(
             content: Column(
@@ -222,30 +215,42 @@ class _WonderPageState extends State<WonderPage> {
           );
         },
       );
+
       if (_image == null) return;
 
-      // Référence du stockage Firebase
+      // Générer un nom de fichier unique
       final String fileName = '${widget.wond.idWonder}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final Reference storageRef =
-      FirebaseStorage.instance.ref().child('wonders_images_proposes/$fileName');
 
-      // Upload de l'image
-      final UploadTask uploadTask = storageRef.putFile(File(_image!.path));
-      final TaskSnapshot snapshot = await uploadTask;
+      // Upload de l'image dans le stockage Supabase
+      final file = File(_image!.path);
 
-      // Récupération de l'URL
-      final String imageUrl = await snapshot.ref.getDownloadURL();
+      final uploadResponse = await Supabase.instance.client.storage
+          .from('wonders_images_proposes') // Remplacez par le nom de votre bucket
+          .upload('public/wonder.jpg', file);
 
+      if (uploadResponse != null) {
+        throw Exception('Erreur lors de l\'upload de l\'image : ${uploadResponse.toString()}');
+      }
 
-      // Enregistrement dans Firestore
-      await FirebaseFirestore.instance.collection('wonders_images_proposition').add({
+      final String imageUrl = uploadResponse.toString();
+
+      // Enregistrement dans la table Supabase
+      await Supabase.instance.client
+          .from('wonders_images_proposition') // Remplacez par le nom de votre table
+          .insert({
         'wonderId': widget.wond.idWonder,
         'imageUrl': imageUrl,
-        'uploadedAt': FieldValue.serverTimestamp(),
+        'uploadedAt': DateTime.now().toIso8601String(), // Utilisez DateTime.now() pour le timestamp
       });
+
+      // Fermer le modal de chargement
+      Navigator.of(context).pop();
 
       _showSuccessDialog();
     } catch (e, stackTrace) {
+      // Fermer le modal de chargement en cas d'erreur
+      Navigator.of(context).pop();
+
       debugPrint("Erreur : $e");
       debugPrint("Stack trace : $stackTrace");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -273,7 +278,7 @@ class _WonderPageState extends State<WonderPage> {
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
-                _uploadImageToFirebase();
+                _uploadImageToSupabase();
               },
               child: const Text("Soumettre"),
             ),
@@ -372,6 +377,7 @@ class _WonderPageState extends State<WonderPage> {
               .map<LatLng>((coord) => LatLng(coord[1], coord[0]))
               .toList();
           distanceKm = distanceMeters / 1000;
+          loadVal.value = 1;
         });
       } else {
         throw Exception("Erreur lors de la récupération de l'itinéraire : ${response.body}");
@@ -1046,7 +1052,7 @@ class _WonderPageState extends State<WonderPage> {
                                         builder: (BuildContext context) {
                                           return AlertDialog(
                                             title: const Text(
-                                                "Choisissez une methode"),
+                                                "Selectionner une photo"),
                                             actions: [
                                               Column(
                                                   mainAxisAlignment:
@@ -1074,26 +1080,6 @@ class _WonderPageState extends State<WonderPage> {
                                                             )
                                                           ],
                                                         )),
-                                                    ElevatedButton(
-                                                        onPressed: null,
-                                                        child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .center,
-                                                          children: [
-                                                            const Icon(
-                                                              LucideIcons
-                                                                  .camera,
-                                                              size: 20,
-                                                            ),
-                                                            Text(
-                                                              "Appareil photo",
-                                                              style:
-                                                                  GoogleFonts
-                                                                      .jura(),
-                                                            )
-                                                          ],
-                                                        )),
                                                   ])
                                             ],
                                           );
@@ -1113,10 +1099,9 @@ class _WonderPageState extends State<WonderPage> {
                           ],
                         ),
                       ),
-                      StreamBuilder<QuerySnapshot>(
-                        stream: widget.wond.getAvis(),
-                        builder: (BuildContext context,
-                            AsyncSnapshot<QuerySnapshot> snapshot) {
+                      FutureBuilder<List<Map<String, dynamic>>>(
+                        future: widget.wond.getAvis(),
+                        builder: (context, snapshot) {
                           if (snapshot.hasError) {
                             return const Text("Un problème est survenu");
                           }
@@ -1133,7 +1118,7 @@ class _WonderPageState extends State<WonderPage> {
                             );
                           }
 
-                          if (snapshot.data!.docs.isEmpty) {
+                          if (snapshot.data!.isEmpty) {
                             return Center(
                                 child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -1151,20 +1136,21 @@ class _WonderPageState extends State<WonderPage> {
                           return ListView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
-                              itemCount: min(snapshot.data!.docs.length, 2),
+                              itemCount: min(snapshot.data!.length, 2),
                               itemBuilder: (BuildContext context, int index) {
-                                final DocumentSnapshot document =
-                                    snapshot.data!.docs[index];
+                                final Map<String, dynamic> document = snapshot.data![index];
                                 final Avis avis = Avis(
-                                  idAvis: document.id,
-                                  note: document['note'],
+                                  idAvis: document['id'],
+                                  note: (document['note'] as num).toDouble(),
                                   content: document['content'],
                                   wonder: document['wonder'],
-                                  user: document['user'],
-                                  userImage: document['userImage'],
+                                  userImage: document['user']?['profil_path'],
+                                  userName: document['user']?['name'],
+                                  userId: document['user']?['uid'],
                                 );
                                 return GestureDetector(
-                                    onTap: () => null,
+                                    onTap: () {
+                                    },
                                     child: CommentWidget(
                                         size: size, avis: avis, maxlines: 2));
                               });
@@ -1180,11 +1166,9 @@ class _WonderPageState extends State<WonderPage> {
                                     builder: (BuildContext context) {
                                       return Container(
                                         padding: const EdgeInsets.all(10),
-                                        child: StreamBuilder<QuerySnapshot>(
-                                          stream: widget.wond.getAvis(),
-                                          builder: (BuildContext context,
-                                              AsyncSnapshot<QuerySnapshot>
-                                                  snapshot) {
+                                        child: FutureBuilder<List<Map<String, dynamic>>>(
+                                          future: widget.wond.getAvis(),
+                                          builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
                                             if (snapshot.hasError) {
                                               return const Text(
                                                   'Un problème est survenu');
@@ -1203,7 +1187,7 @@ class _WonderPageState extends State<WonderPage> {
                                               );
                                             }
 
-                                            if (snapshot.data!.docs.isEmpty) {
+                                            if (snapshot.data!.isEmpty) {
                                               return Center(
                                                   child: Column(
                                                 mainAxisAlignment:
@@ -1230,24 +1214,20 @@ class _WonderPageState extends State<WonderPage> {
                                             return ListView.builder(
                                                 shrinkWrap: true,
                                                 itemCount: snapshot
-                                                    .data!.docs.length,
+                                                    .data!.length,
                                                 itemBuilder:
                                                     (BuildContext context,
                                                         int index) {
-                                                  final DocumentSnapshot
-                                                      document = snapshot
-                                                          .data!.docs[index];
-                                                  final Avis avis = Avis(
-                                                    idAvis: document.id,
-                                                    note: document['note'],
-                                                    content:
-                                                        document['content'],
-                                                    wonder:
-                                                        document['wonder'],
-                                                    user: document['user'],
-                                                    userImage:
-                                                        document['userImage'],
-                                                  );
+                                                      final Map<String, dynamic> document = snapshot.data![index];
+                                                      final Avis avis = Avis(
+                                                        idAvis: document['id'],
+                                                        note: document['note'],
+                                                        content: document['content'],
+                                                        wonder: document['wonder'],
+                                                        userImage: document['user']?['profil_path'],
+                                                        userName: document['user']?['name'],
+                                                        userId: document['user']?['uid'],
+                                                      );
                                                   return GestureDetector(
                                                       onTap: () {},
                                                       child: CommentWidget(
@@ -1697,7 +1677,7 @@ class _WonderPageState extends State<WonderPage> {
       child: FlutterMap(
         options: MapOptions(
           initialCenter: latLng.LatLng(
-              double.parse(widget.wond.latitude), double.parse(widget.wond.longitude)),
+              widget.wond.latitude, widget.wond.longitude),
           initialZoom: 14,
           interactionOptions:
               const InteractionOptions(flags: ~InteractiveFlag.doubleTapZoom),
@@ -1707,7 +1687,7 @@ class _WonderPageState extends State<WonderPage> {
           MarkerLayer(markers: [
             Marker(
                 point: latLng.LatLng(
-                    double.parse(widget.wond.latitude), double.parse(widget.wond.longitude)),
+                    widget.wond.latitude, widget.wond.longitude),
                 child: const Icon(
                   Icons.location_pin,
                   color: Color(0xff226900),
@@ -1764,8 +1744,8 @@ class _WonderPageState extends State<WonderPage> {
                   Marker(
                     width: 80.0,
                     height: 80.0,
-                    point: latLng.LatLng(double.parse(widget.wond.latitude),
-                        double.parse(widget.wond.longitude)),
+                    point: latLng.LatLng(widget.wond.latitude,
+                        widget.wond.longitude),
                     child: const Icon(
                       Icons.location_on,
                       color: Colors.green,
@@ -1785,8 +1765,8 @@ class _WonderPageState extends State<WonderPage> {
                       context,
                       PageRouteBuilder(
                           pageBuilder: (_, __, ___) => MapScreen(
-                                endLat: double.parse(widget.wond.latitude),
-                                endLong: double.parse(widget.wond.longitude),
+                                endLat: widget.wond.latitude,
+                                endLong: widget.wond.longitude,
                               ),
                           transitionsBuilder: (_, animation, __, child) {
                             return SlideTransition(
@@ -1851,7 +1831,7 @@ class ImagesWonders extends StatefulWidget {
 class _ImagesWondersState extends State<ImagesWonders> {
   final PageController _pageStorieController = PageController();
   int _currentPageIndex = 0;
-  List<DocumentSnapshot>? _documents;
+  List<Map<String, dynamic>>? _documents;
   bool _isLoading = true;
 
   @override
@@ -1862,9 +1842,9 @@ class _ImagesWondersState extends State<ImagesWonders> {
 
   Future<void> _loadImages() async {
     try {
-      final QuerySnapshot snapshot = await widget.wond.fetchImages();
+      final List<Map<String, dynamic>> images = await widget.wond.fetchImages();
       setState(() {
-        _documents = snapshot.docs;
+        _documents = images; // _documents est maintenant une List<Map<String, dynamic>>
         _isLoading = false;
       });
     } catch (e) {
@@ -1874,7 +1854,7 @@ class _ImagesWondersState extends State<ImagesWonders> {
     }
   }
 
-  void _showFullScreenImage(String imageUrl) {
+  void _showFullScreenImage(String imageUrl, String source) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1893,12 +1873,8 @@ class _ImagesWondersState extends State<ImagesWonders> {
                 backgroundDecoration: const BoxDecoration(color: Colors.black),
                 loadingBuilder: (context, event) {
                   // Indicateur de chargement pendant le téléchargement de l'image
-                  return Center(
+                  return const Center(
                     child: CircularProgressIndicator(
-                      value: event == null
-                          ? 0
-                          : event.cumulativeBytesLoaded /
-                              event.expectedTotalBytes!,
                     ),
                   );
                 },
@@ -1924,6 +1900,13 @@ class _ImagesWondersState extends State<ImagesWonders> {
                     Navigator.of(context).pop();
                   },
                 ),
+              ),
+
+              Positioned(
+                bottom: 30,
+                right: 0,
+                left: 0,
+                child: Center(child: Text(source)),
               ),
             ],
           ),
@@ -2018,13 +2001,12 @@ class _ImagesWondersState extends State<ImagesWonders> {
                   },
                   itemBuilder: (context, index) {
                     final document = _documents![index];
-                    final data = document.data() as Map<String, dynamic>;
                     return GestureDetector(
                       onTap: () {
-                        _showFullScreenImage(data['image_url']);
+                        _showFullScreenImage(document['image_url'], document['source']);
                       },
                       child: PhotoWonder(
-                        path: data['image_url'],
+                        path: document['image_url'],
                         wonderName: widget.wond.wonderName,
                       ),
                     );
@@ -2118,7 +2100,7 @@ class _CommentWidgetState extends State<CommentWidget> {
 
   void _loadUser() async {
     final Utilisateur? user =
-        await Camwonder().getUserByUniqueRealId(widget.avis.user);
+        await Camwonder().getUserByUniqueRealId(widget.avis.userId);
     setState(() {
       if (user != null) {
         username = user.nom;
@@ -2356,7 +2338,7 @@ class _GuideWidgetState extends State<GuideWidget> {
                             textStyle: const TextStyle(fontSize: 10)),
                       ),
                       const SizedBox(width: 5,),
-                      const Icon(LucideIcons.shieldCheck)
+                      const Icon(LucideIcons.shieldCheck, color: Colors.blue, size: 15,)
                     ],
                   )
                 ],
@@ -2424,10 +2406,9 @@ class _SimilairesListState extends State<SimilairesList> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<QuerySnapshot>(
+    return FutureBuilder<List<Map<String, dynamic>>>(
         future: widget.wond.getSimilar(),
-        builder: (BuildContext context,
-            AsyncSnapshot<QuerySnapshot<Object?>> snapshot) {
+        builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
                 child: CircularProgressIndicator(
@@ -2437,7 +2418,7 @@ class _SimilairesListState extends State<SimilairesList> {
             return const Center(
               child: Text("Vous n'etes pas connecté "),
             );
-          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(
                 child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2458,14 +2439,14 @@ class _SimilairesListState extends State<SimilairesList> {
               child: ListView(
                 shrinkWrap: true,
                 scrollDirection: Axis.horizontal,
-                children: snapshot.data!.docs
-                    .where((doc) => doc.id != widget.wond.idWonder)
-                    .map((DocumentSnapshot document) {
+                children: snapshot.data!
+                    .where((doc) => doc['id'] != widget.wond.idWonder)
+                    .map((Map<String, dynamic> document) {
                   final Wonder wwond = Wonder(
-                      idWonder: document.id,
-                      wonderName: document['wonderName'],
+                      idWonder: document['id'],
+                      wonderName: document['wonder_name'],
                       description: document['description'],
-                      imagePath: document['imagePath'],
+                      imagePath: document['image_path'],
                       city: document['city'],
                       region: document['region'],
                       free: document['free'],
@@ -2475,8 +2456,10 @@ class _SimilairesListState extends State<SimilairesList> {
                       longitude: document['longitude'],
                       note: (document['note'] as num).toDouble(),
                       categorie: document['categorie'],
-                      isreservable: document['isreservable'],
-                      acces: document['acces']);
+                      isreservable: document['is_reservable'],
+                      acces: document['acces'],
+                      description_acces: document['description_acces'],
+                      is_premium: document['is_premium']);
                   return Storie(wond: wwond);
                 }).toList(),
               ),
@@ -2506,9 +2489,9 @@ class _GuidesListState extends State<GuidesList> {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<List<Map<String, dynamic>>>(
       stream: widget.wond.getGuide(),
-      builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+      builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
         if (snapshot.hasError) {
           return const Text("Un problème est survenu");
         }
@@ -2521,21 +2504,22 @@ class _GuidesListState extends State<GuidesList> {
           );
         }
 
-        if (snapshot.data!.docs.isEmpty) {
+        if (snapshot.data!.isEmpty) {
           return Center(
-              child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                height: widget.size.height / 20,
-                margin: const EdgeInsets.all(20),
-                child: Theme.of(context).brightness == Brightness.light
-                    ? Image.asset('assets/vide_light.png')
-                    : Image.asset('assets/vide_dark.png'),
-              ),
-              const Text("Aucun guide enregistré pour ce lieu !")
-            ],
-          ));
+              child: Container(
+                margin: const EdgeInsets.all(25),
+                child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                Container(
+                  height: widget.size.height / 20,
+                  margin: const EdgeInsets.all(20),
+                  child: const Icon(Icons.person_off_outlined, size: 40,),
+                ),
+                const Text("Pas de guide enregistré pour ce lieu !")
+                            ],
+                          ),
+              ));
         }
 
         return SizedBox(
@@ -2543,7 +2527,7 @@ class _GuidesListState extends State<GuidesList> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(), // Permet le défilement
-            children: snapshot.data!.docs.map((DocumentSnapshot document) {
+            children: snapshot.data!.map((Map<String, dynamic> document) {
               final Guide guide = Guide(
                 id: document['id'],
                 numero: document['numero'],
@@ -2624,10 +2608,9 @@ class _EvenementListState extends State<EvenementList> {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-    return FutureBuilder<QuerySnapshot>(
+    return FutureBuilder<List<Map<String, dynamic>>>(
         future: widget.wond.getEvenement(),
-        builder: (BuildContext context,
-            AsyncSnapshot<QuerySnapshot<Object?>> snapshot) {
+        builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
                 child: CircularProgressIndicator(
@@ -2637,7 +2620,7 @@ class _EvenementListState extends State<EvenementList> {
             return const Center(
               child: Text("Vous n'etes pas connecté "),
             );
-          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return Center(
                 child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2656,9 +2639,9 @@ class _EvenementListState extends State<EvenementList> {
               child: ListView(
                 shrinkWrap: true,
                 scrollDirection: Axis.horizontal,
-                children: snapshot.data!.docs.map((DocumentSnapshot document) {
+                children: snapshot.data!.map((Map<String, dynamic> document) {
                   final Evenements evenement = Evenements(
-                      idevenements: document.id,
+                      idevenements: document['id'],
                       contenu: document['contenu'],
                       title: document['title'],
                       numeroTel: document['numeroTel'],

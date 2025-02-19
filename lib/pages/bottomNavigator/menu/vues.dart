@@ -10,7 +10,6 @@ import 'package:camwonders/pages/page_categorie.dart';
 import 'package:camwonders/pages/storie.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:camwonders/widgetGlobal.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:gif/gif.dart';
@@ -20,6 +19,7 @@ import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:latlong2/latlong.dart' as latLng;
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ListeVue extends StatefulWidget {
   const ListeVue({super.key});
@@ -33,22 +33,15 @@ class _ListeVueState extends State<ListeVue> {
   bool _visible = false;
   int _currentPage = 0;
   int select_cat = 0;
+  String categorie_to_go = 'Nature';
+  int id_select_cat = 0;
   bool isLoading = false;
   final PageController _offreController = PageController();
   Timer? _timer;
   int _nombreOffres = 0;
-  late final Stream<QuerySnapshot> _offres;
-  late final Stream<QuerySnapshot> _wondersPopulaire;
-
-  final List<Categorie> cats = [
-    Categorie(1, "Wonders nature", 'leaf', true),
-    Categorie(2, "Wonders patrimoine", 'landmark', true),
-    Categorie(3, "Wonders restau", 'utensils', false),
-    Categorie(4, "Wonders Hotels", 'bed', false),
-  ];
-
   List<Wonder> wonders = [];
-  Stream<QuerySnapshot>? listewonderscat;
+  Stream<List<Map<String, dynamic>>>? _offresStream;
+
 
 
   @override
@@ -56,38 +49,41 @@ class _ListeVueState extends State<ListeVue> {
     super.initState();
     if (mounted) {
       _verifyConnection();
-      _offres = FirebaseFirestore.instance.collection('offres').snapshots();
-      _wondersPopulaire = FirebaseFirestore.instance
-          .collection('wonders')
-          .orderBy('note', descending: true)
-          .limit(5)
-          .snapshots();
       _getNumberOfOffers();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         setState(() {
           _visible = true;
         });
       });
-
+      loadData();
       _startAutoScroll();
     }
 
-    listewonderscat = FirebaseFirestore.instance
-        .collection('wonders')
-        .where('categorie', isEqualTo: cats[select_cat].categoryName)
-        .limit(3)
-        .snapshots();
   }
 
-  void _loadCat(int select) {
+  Future<void> loadData() async {
     setState(() {
-      listewonderscat = FirebaseFirestore.instance
-          .collection('wonders')
-          .where('categorie', isEqualTo: cats[select].categoryName)
-          .limit(3)
-          .snapshots();
+      _offresStream = Supabase.instance.client
+          .from('offre')
+          .stream(primaryKey: ['id']);
     });
+
   }
+
+  Future<List<Map<String, dynamic>>> fetchCategories() async {
+    final response = await Supabase.instance.client.from('categorie').select();
+    return response;
+  }
+
+  Future<List<Map<String, dynamic>>> fetchWonderPopulaire() async {
+    final response = await Supabase.instance.client
+        .from('wonder')
+        .select()
+        .order('note', ascending: false)
+        .limit(5);
+    return response;
+  }
+
 
   void _verifyConnection() async {
     if (await Logique.checkInternetConnection()) {
@@ -100,11 +96,20 @@ class _ListeVueState extends State<ListeVue> {
   }
 
   Future<void> _getNumberOfOffers() async {
-    final QuerySnapshot querySnapshot =
-        await FirebaseFirestore.instance.collection('offres').get();
-    setState(() {
-      _nombreOffres = querySnapshot.docs.length;
-    });
+    try {
+      final response = await Supabase.instance.client
+          .from('offre') // Remplacez 'offres' par le nom de votre table
+          .select('id'); // Compter les offres
+
+      setState(() {
+        _nombreOffres = response.length ?? 0; // Utilisez response.count pour obtenir le nombre d'offres
+      });
+    } catch (e) {
+      print('Erreur lors de la récupération du nombre d\'offres : $e');
+      setState(() {
+        _nombreOffres = 0; // En cas d'erreur, définir _nombreOffres à 0
+      });
+    }
   }
 
   void _startAutoScroll() {
@@ -176,14 +181,20 @@ class _ListeVueState extends State<ListeVue> {
 
             SizedBox(
               height: 200,
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _offres,
-                builder: (BuildContext context,
-                    AsyncSnapshot<QuerySnapshot> snapshot) {
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _offresStream,
+                builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return const Center(
                       child: Text(
                           "Erreur survenue, essayez de relancer l'application"),
+                    );
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const Center(
+                      child: Text(
+                          "Aucune donnée truové"),
                     );
                   }
 
@@ -195,7 +206,7 @@ class _ListeVueState extends State<ListeVue> {
                   }
 
                   return PageView.builder(
-                      itemCount: snapshot.data!.docs.length,
+                      itemCount: snapshot.data!.length,
                       controller: _offreController,
                       onPageChanged: (int page) {
                         setState(() {
@@ -205,7 +216,7 @@ class _ListeVueState extends State<ListeVue> {
                         });
                       },
                       itemBuilder: (context, index) {
-                        final DocumentSnapshot document = snapshot.data!.docs[index];
+                        final Map<String, dynamic> document = snapshot.data![index];
                         return GestureDetector(
                           onPanDown: (details) {
                             _stopAutoScroll();
@@ -310,7 +321,7 @@ class _ListeVueState extends State<ListeVue> {
 
                                               );
                                             },
-                                            child: Text(document['textlink'],
+                                            child: Text(document['text_link'],
                                               style: GoogleFonts.jura(
                                                   textStyle: const TextStyle(
                                                       fontSize: 13,
@@ -331,7 +342,7 @@ class _ListeVueState extends State<ListeVue> {
               ),
             ),
 
-            StoriesList(wondersPopulaire: _wondersPopulaire),
+            StoriesList(),
             //Storie(path: wonders[1].imagePath),
 
             Container(
@@ -364,51 +375,76 @@ class _ListeVueState extends State<ListeVue> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   Expanded(
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      scrollDirection: Axis.horizontal,
-                      itemCount: cats.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        return GestureDetector(
-                          onTap: () {
-                            cats[index].statut
-                                ? select_cat = index
-                                : showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return AlertDialog(
-                                        title: const Icon(
-                                          LucideIcons.fileWarning,
-                                          size: 50,
-                                          color: Colors.orange,
-                                        ),
-                                        content: Text(
-                                          "Catégorie bientôt disponible",
-                                          style: GoogleFonts.lalezar(
-                                              textStyle: const TextStyle(
-                                                  fontSize: 20)),
-                                        ),
-                                      );
-                                    }); select_cat = index;
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: fetchCategories(), // Fonction pour récupérer les catégories depuis Supabase
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text('Erreur : ${snapshot.error}'));
+                        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Center(child: Text('Aucune catégorie trouvée.'));
+                        } else {
+                          final categories = snapshot.data!;
 
-                            _loadCat(index);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(
-                                milliseconds: 1000), // Durée de l'animation
-                            curve: Curves.easeOut, // Type de courbe d'animation
-                            transform: Matrix4.translationValues(
-                                0,
-                                _visible ? 0 : 50,
-                                0), // Déplacement vers le bas
-                            child: catButton(
-                                select_cat: select_cat,
-                                rang: index,
-                                width: width,
-                                verte: ListeVue.verte,
-                                cat: cats[index]),
-                          ),
-                        );
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            scrollDirection: Axis.horizontal,
+                            itemCount: categories.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              final category = categories[index];
+                              return GestureDetector(
+                                onTap: () {
+                                  if (category['statut'] as bool) {
+                                    setState(() {
+                                      select_cat = index;
+                                      categorie_to_go = category['designation'];
+                                      id_select_cat = category['id'];
+                                    });
+                                  } else {
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AlertDialog(
+                                          title: const Icon(
+                                            Icons.warning, // Remplacez par l'icône souhaitée
+                                            size: 50,
+                                            color: Colors.orange,
+                                          ),
+                                          content: Text(
+                                            "Catégorie bientôt disponible",
+                                            style: GoogleFonts.lalezar(
+                                              textStyle: const TextStyle(fontSize: 20),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  }
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 1000), // Durée de l'animation
+                                  curve: Curves.easeOut, // Type de courbe d'animation
+                                  transform: Matrix4.translationValues(
+                                      0,
+                                      _visible ? 0 : 50,
+                                      0), // Déplacement vers le bas
+                                  child: catButton(
+                                    select_cat: select_cat,
+                                    rang: index,
+                                    width: MediaQuery.of(context).size.width,
+                                    verte: ListeVue.verte,
+                                    cat: Categorie(
+                                      id: category['id'] as int,
+                                      designation: category['designation'] as String,
+                                      statut: category['statut'] as bool,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        }
                       },
                     ),
                   ),
@@ -416,12 +452,11 @@ class _ListeVueState extends State<ListeVue> {
               ),
             ),
 
-            StreamBuilder<QuerySnapshot>(
-              stream: listewonderscat,
-              builder: (BuildContext context,
-                  AsyncSnapshot<QuerySnapshot> snapshot) {
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: wonderProvider.wondersStream,
+              builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
                 if (snapshot.hasError) {
-                  return const Text('Something went wrong');
+                  return Center(child: const Text('Quelques choses na pas donné'));
                 }
 
                 if (snapshot.connectionState ==
@@ -436,7 +471,7 @@ class _ListeVueState extends State<ListeVue> {
                   );
                 }
 
-                if (snapshot.data!.docs.isEmpty) {
+                if (snapshot.data!.isEmpty) {
                   return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -458,15 +493,14 @@ class _ListeVueState extends State<ListeVue> {
                 return ListView.builder(
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
-                    itemCount: snapshot.data!.docs.length,
+                    itemCount: snapshot.data!.length,
                     itemBuilder: (BuildContext context, int index) {
-                      final DocumentSnapshot document =
-                      snapshot.data!.docs[index];
+                      final Map<String, dynamic> document = snapshot.data![index];
                       final Wonder wond = Wonder(
-                          idWonder: document.id,
-                          wonderName: document['wonderName'],
+                          idWonder: document['id'],
+                          wonderName: document['wonder_name'],
                           description: document['description'],
-                          imagePath: document['imagePath'],
+                          imagePath: document['image_path'],
                           city: document['city'],
                           region: document['region'],
                           free: document['free'],
@@ -476,8 +510,10 @@ class _ListeVueState extends State<ListeVue> {
                           longitude: document['longitude'],
                           note: (document['note'] as num).toDouble(),
                           categorie: document['categorie'],
-                          isreservable: document['isreservable'],
-                          acces: document['acces']);
+                          isreservable: document['is_reservable'],
+                          acces: document['acces'],
+                          description_acces: document['description_acces'],
+                          is_premium: document['is_premium']);
                       return GestureDetector(
                         onTap: () {
                           if(userProvider.isPremium || wond.free){
@@ -523,11 +559,11 @@ class _ListeVueState extends State<ListeVue> {
                 children: [
                   TextButton(
                       onPressed: (){
-                        wonderProvider.loadCategorie(cats[select_cat].categoryName);
+                        wonderProvider.loadCategorie(id_select_cat);
                         Navigator.push(
                             context,
                             PageRouteBuilder(
-                                pageBuilder: (_, __, ___) => PageCategorie(cat: cats[select_cat]),
+                                pageBuilder: (_, __, ___) => PageCategorie(cat: categorie_to_go, id_categorie: id_select_cat,),
                                 transitionsBuilder: (_, animation, __, child) {
                                   return SlideTransition(
                                     position: Tween<Offset>(
@@ -594,7 +630,7 @@ class catButton extends StatelessWidget {
                 //Icon(, size: 55, color: verte,),
 
                 Text(
-                  cat.categoryName,
+                  cat.designation,
                   style: GoogleFonts.jura(
                       color: cat.statut ? rang == select_cat ? Colors.white : Theme.of(context).brightness ==
                           Brightness.light ? Colors.black : Colors.white : Colors.grey,
@@ -609,8 +645,7 @@ class catButton extends StatelessWidget {
 }
 
 class StoriesList extends StatefulWidget {
-  const StoriesList({super.key, required this.wondersPopulaire});
-  final Stream<QuerySnapshot> wondersPopulaire;
+  const StoriesList({super.key});
 
   static const verte = Color(0xff226900);
 
@@ -679,10 +714,9 @@ class _StoriesListState extends State<StoriesList> {
           margin: const EdgeInsets.only(left: 15),
           child: SizedBox(
               height: _height,
-              child: StreamBuilder<QuerySnapshot>(
-                  stream: widget.wondersPopulaire,
-                  builder: (BuildContext context,
-                      AsyncSnapshot<QuerySnapshot> snapshot) {
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _ListeVueState().fetchWonderPopulaire(),
+                  builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
                     if (snapshot.hasError) {
                       return const Text('Something went wrong');
                     }
@@ -700,7 +734,7 @@ class _StoriesListState extends State<StoriesList> {
                       );
                     }
 
-                    if (snapshot.data!.docs.isEmpty) {
+                    if (snapshot.data!.isEmpty) {
                       return Center(
                           child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -722,15 +756,14 @@ class _StoriesListState extends State<StoriesList> {
                         controller: _controller,
                         shrinkWrap: true,
                         scrollDirection: Axis.horizontal,
-                        itemCount: snapshot.data!.docs.length,
+                        itemCount: snapshot.data!.length,
                         itemBuilder: (BuildContext context, int index) {
-                          final DocumentSnapshot document =
-                              snapshot.data!.docs[index];
+                          final Map<String, dynamic> document = snapshot.data![index];
                           final Wonder wond = Wonder(
-                            idWonder: document.id,
-                            wonderName: document['wonderName'],
+                            idWonder: document['id'],
+                            wonderName: document['wonder_name'],
                             description: document['description'],
-                            imagePath: document['imagePath'],
+                            imagePath: document['image_path'],
                             city: document['city'],
                             region: document['region'],
                             free: document['free'],
@@ -740,8 +773,10 @@ class _StoriesListState extends State<StoriesList> {
                             longitude: document['longitude'],
                             note: (document['note'] as num).toDouble(),
                             categorie: document['categorie'],
-                            isreservable: document['isreservable'],
-                              acces: document['acces']
+                            isreservable: document['is_reservable'],
+                            acces: document['acces'],
+                            description_acces: document['description_acces'],
+                            is_premium: document['is_premium']
                           );
                           return GestureDetector(
                             onTap: () {
@@ -1016,6 +1051,9 @@ class maps extends StatefulWidget {
 }
 
 class _mapsState extends State<maps> {
+  final SupabaseClient supabase = Supabase.instance.client;
+
+
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
@@ -1030,10 +1068,10 @@ class _mapsState extends State<maps> {
         const MarkerLayer(
           markers: [],
         ),
-        FutureBuilder<QuerySnapshot>(
-          future: FirebaseFirestore.instance.collection('wonders').get(),
+        FutureBuilder<List<Map<String, dynamic>>>(
+          future: supabase.from('wonders').select(),
           builder:
-              (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+              (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
                 child: CircularProgressIndicator(
@@ -1044,7 +1082,7 @@ class _mapsState extends State<maps> {
               return const Center(
                 child: Text("Vous n'êtes pas connecté"),
               );
-            } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return const Center(
                 child: Text("Aucune donnée trouvée"),
               );
@@ -1056,26 +1094,28 @@ class _mapsState extends State<maps> {
                   alignment: Alignment.center,
                   padding: const EdgeInsets.all(50),
                   maxZoom: 13,
-                  markers: snapshot.data!.docs.map((DocumentSnapshot document) {
+                  markers: snapshot.data!.map((Map<String, dynamic> document) {
                     final Wonder wond = Wonder(
-                        idWonder: document.id,
-                        wonderName: document['wonderName'],
+                        idWonder: document['id'],
+                        wonderName: document['wonder_name'],
                         description: document['description'],
-                        imagePath: document['imagePath'],
+                        imagePath: document['image_path'],
                         city: document['city'],
                         region: document['region'],
                         free: document['free'],
                         price: document['price'],
                         horaire: document['horaire'],
-                        latitude: document['latitude'],
-                        longitude: document['longitude'],
+                        latitude: (document['latitude'] as num).toDouble(),
+                        longitude: (document['longitude'] as num).toDouble(),
                         note: (document['note'] as num).toDouble(),
                         categorie: document['categorie'],
-                        isreservable: document['isreservable'],
-                        acces: document['acces']);
+                        isreservable: document['is_reservable'],
+                        acces: document['acces'],
+                        description_acces: document['description_acces'],
+                        is_premium: document['is_premium']);
                     return Marker(
-                      point: latLng.LatLng(double.parse(wond.latitude),
-                          double.parse(wond.longitude)),
+                      point: latLng.LatLng(wond.latitude,
+                          wond.longitude),
                       child: WonderMarker(wonder: wond),
                     );
                   }).toList(),

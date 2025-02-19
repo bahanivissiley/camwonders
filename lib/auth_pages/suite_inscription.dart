@@ -2,11 +2,11 @@
 
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:camwonders/services/camwonders.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'debut_inscription.dart';
 import 'package:camwonders/auth_pages/fin_inscription.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/mainapp.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gif/gif.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,9 +16,8 @@ import 'package:sms_autofill/sms_autofill.dart';
 // ignore: camel_case_types
 class Suite_Inscription extends StatefulWidget {
   const Suite_Inscription(
-      {super.key, required this.phoneNumber, required this.verificationId});
+      {super.key, required this.phoneNumber});
   final phoneNumber;
-  final verificationId;
 
   @override
   State<Suite_Inscription> createState() => _Suite_InscriptionState();
@@ -29,7 +28,6 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
     with CodeAutoFill {
   TextEditingController password = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final pinController = TextEditingController();
   bool validate = false;
   DateTime? lastPressed;
@@ -290,13 +288,14 @@ class _Suite_InscriptionState extends State<Suite_Inscription>
           );
         });
 
-    final String otp = otpCode;
     try {
-      final PhoneAuthCredential credential = PhoneAuthProvider.credential(
-          verificationId: widget.verificationId, smsCode: otp);
-      await _auth.signInWithCredential(credential);
+      await Supabase.instance.client.auth.verifyOTP(
+        phone: widget.phoneNumber,
+          token: otpCode,
+          type: OtpType.sms,
+      );
 
-      if (await Camwonder().checkIfUserExists(AuthService().currentUser!.uid, context)) {
+      if (await Camwonder().checkIfUserExists(AuthService().currentUser!.id, context)) {
         showModalBottomSheet(
             context: context,
             builder: (BuildContext context) {

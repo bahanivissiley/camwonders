@@ -1,20 +1,17 @@
 import 'package:camwonders/class/Categorie.dart';
 import 'package:camwonders/class/Notification.dart';
 import 'package:camwonders/class/Wonder.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
-import 'package:camwonders/firebase/firebase_options.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/mainapp.dart';
 import 'package:camwonders/pages/welcome.dart';
 import 'package:camwonders/widgetGlobal.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:event_bus/event_bus.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 final EventBus eventBus = EventBus();
 
@@ -25,36 +22,20 @@ class NotificationEvent {
   NotificationEvent(this.title, this.body);
 }
 
-// Gestion des messages reçus en arrière-plan
-@pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  eventBus.fire(NotificationEvent(message.notification?.title, message.notification?.body));
-}
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+
   await Hive.initFlutter();
   Hive.registerAdapter(WonderAdapter());
   Hive.registerAdapter(CategorieAdapter());
-  await FirebaseAppCheck.instance.activate(
-    androidProvider: AndroidProvider.debug,
-    webProvider: ReCaptchaV3Provider('recaptcha-v3-site-key'),
-    appleProvider: AppleProvider.appAttest,
-  );
+
 
   await Hive.openBox<Wonder>('favoris_wonder');
-
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-  FirebaseMessaging.instance.onTokenRefresh
-      .listen((fcmToken) {
-  })
-      .onError((err) {
-  });
+  await Supabase.initialize(
+    url: 'https://hrqjdfpyaucbqitmxlaq.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhycWpkZnB5YXVjYnFpdG14bGFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk1NDI1MTAsImV4cCI6MjA1NTExODUxMH0.Lk73eWJaCfCNaKqTdITWJhGzIL9K40LRwKDhB9TQwGs',
+  );
 
 
   runApp(

@@ -5,7 +5,6 @@ import 'package:camwonders/pages/reservation_details.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -19,7 +18,7 @@ class reservations extends StatefulWidget {
 
 class _reservationsState extends State<reservations> {
   List<Reservations> reservations = [];
-  Future<QuerySnapshot<Object?>>? futureReservations;
+  Future<List<Map<String, dynamic>>>? futureReservations;
 
   @override
   void initState() {
@@ -72,10 +71,9 @@ class _reservationsState extends State<reservations> {
               ),
             ),
             Expanded(
-              child: FutureBuilder<QuerySnapshot>(
+              child: FutureBuilder<List<Map<String, dynamic>>>(
                   future: futureReservations,
-                  builder: (BuildContext context,
-                      AsyncSnapshot<QuerySnapshot<Object?>> snapshot) {
+                  builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return const Center(
                           child: CircularProgressIndicator(
@@ -86,7 +84,7 @@ class _reservationsState extends State<reservations> {
                         child: Text("Vous n'etes pas connecté "),
                       );
                     } else if (!snapshot.hasData ||
-                        snapshot.data!.docs.isEmpty) {
+                        snapshot.data!.isEmpty) {
                       return Center(
                           child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -104,20 +102,18 @@ class _reservationsState extends State<reservations> {
                     } else {
                       return ListView(
                         shrinkWrap: true,
-                        children: snapshot.data!.docs
-                            .map((DocumentSnapshot document) {
-                          final Map<String, dynamic> data =
-                              document.data() as Map<String, dynamic>;
+                        children: snapshot.data!
+                            .map((Map<String, dynamic> document) {
                           final Reservations reservation = Reservations(
-                              idReservation: document.id,
-                              user: data['user'],
-                              nbrePersonnes: data['nbrePersonnes'],
-                              numeroTel: data['numeroTel'],
-                              idWonder: data['idWonder'],
-                              date: data['date'],
-                              isvalidate: data['isvalidate'],
-                              isload: data['isload'],
-                              motif: data['motif']);
+                              idReservation: document['user'],
+                              user: document['user'],
+                              nbrePersonnes: document['nbrePersonnes'],
+                              numeroTel: document['numeroTel'],
+                              idWonder: document['idWonder'],
+                              date: document['date'],
+                              isvalidate: document['isvalidate'],
+                              isload: document['isload'],
+                              motif: document['motif']);
                           return FavorisWidget(
                             reservation: reservation,
                             Ondelete: fetchReservations,
@@ -148,7 +144,7 @@ class FavorisWidget extends StatefulWidget {
 
 class _FavorisWidgetState extends State<FavorisWidget> {
   Wonder wond = Wonder(
-      idWonder: "chargement...",
+      idWonder: 1,
       wonderName: "chargement...",
       description: "chargement...",
       imagePath: "chargement...",
@@ -157,12 +153,14 @@ class _FavorisWidgetState extends State<FavorisWidget> {
       free: false,
       price: 500,
       horaire: "chargement...",
-      latitude: "chargement...",
-      longitude: "chargement...",
+      latitude: 0.0,
+      longitude: 0.0,
       note: 0.0,
-      categorie: "chargement...",
+      categorie: 0,
       isreservable: false,
-      acces: "Par voiture");
+      acces: "Par voiture",
+  description_acces: 'Par voiture',
+  is_premium: true);
 
   bool isNetworkImage = false;
 

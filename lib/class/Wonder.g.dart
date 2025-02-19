@@ -17,7 +17,7 @@ class WonderAdapter extends TypeAdapter<Wonder> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Wonder(
-      idWonder: fields[0] as String,
+      idWonder: fields[0] as int,
       wonderName: fields[1] as String,
       description: fields[2] as String,
       imagePath: fields[3] as String,
@@ -26,12 +26,14 @@ class WonderAdapter extends TypeAdapter<Wonder> {
       free: fields[6] as bool,
       price: fields[7] as int,
       horaire: fields[8] as String,
-      latitude: fields[9] as String,
-      longitude: fields[10] as String,
+      latitude: fields[9] as double,
+      longitude: fields[10] as double,
       note: fields[11] as double,
-      categorie: fields[12] as String,
+      categorie: fields[12] as int,
       isreservable: fields[13] as bool,
       acces: fields[14] as String,
+      description_acces: fields[15] as String,
+      is_premium: fields[16] as bool,
     );
   }
 
@@ -66,7 +68,11 @@ class WonderAdapter extends TypeAdapter<Wonder> {
       ..writeByte(12)
       ..write(obj.categorie)
       ..writeByte(13)
-      ..write(obj.isreservable);
+      ..write(obj.isreservable)
+      ..writeByte(14)
+      ..write(obj.acces)
+      ..writeByte(15)
+      ..write(obj.description_acces);
   }
 
   @override

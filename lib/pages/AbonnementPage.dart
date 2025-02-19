@@ -1,4 +1,4 @@
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/mainapp.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
 import 'package:camwonders/services/camwonders.dart';
@@ -6,9 +6,6 @@ import 'package:camwonders/widgetGlobal.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
-import 'package:cinetpay/cinetpay.dart';
-import 'package:get/get.dart';
 
 class SubscriptionPage extends StatefulWidget {
   @override
@@ -21,52 +18,21 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
 
   void lancerPaiement(BuildContext context) async {
     Navigator.pop(context);
-    final String transactionId = Random().nextInt(100000000).toString();
+    await Camwonder.updatePremiumStatusByFieldId(AuthService().currentUser!.id, true);
+    Provider.of<UserProvider>(context, listen: false).setPremium(true);
 
-    await Get.to(
-          () => CinetPayCheckout(
-        title: 'Paiement',
-        titleStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        titleBackgroundColor: Colors.green,
-        configData: <String, dynamic>{
-          'apikey': '202691081867a8f7cdb409a4.21795969',
-          'site_id': "105887561",
-          'notify_url': 'https://www.camwonders.com/notify',
-        },
-        paymentData: <String, dynamic>{
-          'transaction_id': transactionId,
-          'amount': selectedOption, // Montant fixe
-          'currency': 'XAF',
-          'channels': 'ALL',
-          'description': 'Paiement test',
-        },
-        waitResponse: (data) async {
-          if (data['status'] == 'ACCEPTED') {
-            Get.back(); // Ferme la page de paiement
-            await Camwonder.updatePremiumStatusByFieldId(AuthService().currentUser!.uid, true);
-            Provider.of<UserProvider>(context, listen: false).setPremium(true);
+    // Attendre un peu avant de rediriger
+    Future.delayed(const Duration(seconds: 3), () {
+      Navigator.pop(context);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => MainApp()),
+            (Route<dynamic> route) => false,
+      );
+    });
 
-            // Attendre un peu avant de rediriger
-            Future.delayed(const Duration(seconds: 3), () {
-              Navigator.pop(context);
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => MainApp()),
-                    (Route<dynamic> route) => false,
-              );
-            });
+    _afficherModal(context, 'Paiement Réussi', Icons.check_circle, Colors.green);
 
-            _afficherModal(context, 'Paiement Réussi', Icons.check_circle, Colors.green);
-          }
-        },
-        onError: (data) {
-          if (Get.isOverlaysOpen) {
-            Get.back();
-          }
-          _afficherModal(context, 'Échec du paiement', Icons.error, Colors.red);
-        },
-      ),
-    );
   }
 
 
@@ -199,6 +165,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                         );
                       },
                     );
+
+                    Future.delayed(const Duration(seconds: 4));
 
                     lancerPaiement(context);
 

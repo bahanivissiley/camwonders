@@ -1,12 +1,13 @@
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/class/classes.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 part "Wonder.g.dart";
 
@@ -14,7 +15,7 @@ part "Wonder.g.dart";
 @HiveType(typeId: 1)
 class Wonder {
   @HiveField(0)
-  String idWonder;
+  int idWonder;
 
   @HiveField(1)
   String wonderName;
@@ -41,22 +42,28 @@ class Wonder {
   final String horaire;
 
   @HiveField(9)
-  final String latitude;
+  final double latitude;
 
   @HiveField(10)
-  final String longitude;
+  final double longitude;
 
   @HiveField(11)
   double note;
 
   @HiveField(12)
-  final String categorie;
+  final int categorie;
 
   @HiveField(13)
   final bool isreservable;
 
   @HiveField(14)
   final String acces;
+
+  @HiveField(15)
+  final String description_acces;
+
+  @HiveField(16)
+  final bool is_premium;
 
   Wonder(
       {required this.idWonder,
@@ -73,26 +80,29 @@ class Wonder {
       required this.note,
       required this.categorie,
       required this.isreservable,
-        required this.acces});
+        required this.acces,
+        required this.description_acces,
+        required this.is_premium});
 
-  factory Wonder.fromDocument(DocumentSnapshot doc) {
-    final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+  factory Wonder.fromDocument(Map<String, dynamic> doc) {
     return Wonder(
-        idWonder: doc.id,
-        wonderName: data['wonderName'],
-        description: data['description'],
-        imagePath: data['imagePath'],
-        city: data['city'],
-        region: data['region'],
-        free: data['free'],
-        price: data['price'],
-        horaire: data['horaire'],
-        latitude: data['latitude'],
-        longitude: data['longitude'],
-        note: (data['note'] as num).toDouble(),
-        categorie: data['categorie'],
-        isreservable: data['isreservable'],
-        acces: data['acces'],
+        idWonder: doc['id'],
+        wonderName: doc['wonder_name'],
+        description: doc['description'],
+        imagePath: doc['image_path'],
+        city: doc['city'],
+        region: doc['region'],
+        free: doc['free'],
+        price: doc['price'],
+        horaire: doc['horaire'],
+        latitude: doc['latitude'],
+        longitude: doc['longitude'],
+        note: (doc['note'] as num).toDouble(),
+        categorie: doc['categorie'],
+        isreservable: doc['is_reservable'],
+        acces: doc['acces'],
+        description_acces: doc['description_acces'],
+        is_premium: doc['is_premium']
     );
   }
 
@@ -102,26 +112,27 @@ class Wonder {
 
 
   Future<double?> getNoteForWonder() async {
-    final DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
-        .collection('wonders')
-        .doc(idWonder)
-        .get();
+    final response = await Supabase.instance.client
+        .from('wonder')
+        .select('note')
+        .eq('id', idWonder)
+        .single();
 
-    if (documentSnapshot.exists) {
-      return (documentSnapshot.get('note') as num).toDouble();
+    if (response != null) {
+      return (response['note'] as num).toDouble();
     }
     return null;
   }
 
   Future<List<String>> fetchAvantageIds() async {
     try {
-      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('avantage_or_inconvenient_wonder')
-          .where('wonder_id', isEqualTo: idWonder)
-          .get();
+      final response = await Supabase.instance.client
+          .from('av_in_wonder')
+          .select('an_in')
+          .eq('wonder', idWonder);
 
-      final List<String> avantageIds = querySnapshot.docs
-          .map((doc) => doc['avantage_or_inconvenient_id'] as String)
+      final List<String> avantageIds = (response as List)
+          .map((doc) => doc['an_in'] as String)
           .toList();
 
       return avantageIds;
@@ -130,11 +141,13 @@ class Wonder {
     }
   }
 
-  Future<QuerySnapshot> fetchImages() async {
-    return FirebaseFirestore.instance
-        .collection('images_wonder')
-        .where('wonder_id', isEqualTo: idWonder)
-        .get();
+  Future<List<Map<String, dynamic>>> fetchImages() async {
+    final response = await Supabase.instance.client
+        .from('wonder_image')
+        .select()
+        .eq('wonder', idWonder);
+
+    return response;
   }
 
   Future<List<Map<String, dynamic>>> getAvantages() async {
@@ -145,15 +158,14 @@ class Wonder {
     }
 
     final List<String> ids = await fetchAvantageIds();
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('avantages_or_inconvenients')
-        .where('avantage', isEqualTo: true)
-        .where(FieldPath.documentId, whereIn: ids)
-        .get();
+    final response = await Supabase.instance.client
+        .from('avantage_inconvenient')
+        .select()
+        .inFilter('id', ids)
+        .eq('is_avantage', true);
 
-    final avantages = querySnapshot.docs.map((doc) => doc.data()).toList();
-    dataCache.setAvantages(cacheKey, avantages);
-    return avantages;
+    dataCache.setAvantages(cacheKey, response);
+    return response;
   }
 
 
@@ -165,133 +177,88 @@ class Wonder {
     }
 
     final List<String> ids = await fetchAvantageIds();
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('avantages_or_inconvenients')
-        .where('avantage', isEqualTo: false)
-        .where(FieldPath.documentId, whereIn: ids)
-        .get();
+    final response = await Supabase.instance.client
+        .from('avantage_inconvenient')
+        .select()
+        .inFilter('id', ids)
+        .eq('is_avantage', false);
 
-    final inconvenients = querySnapshot.docs.map((doc) => doc.data()).toList();
-    dataCache.setAvantages(cacheKey, inconvenients);
-    return inconvenients;
+    dataCache.setAvantages(cacheKey, response);
+    return response;
   }
 
 
-  Stream<QuerySnapshot> getAvis() {
-    return FirebaseFirestore.instance
-        .collection('avis')
-        .where('wonder', isEqualTo: idWonder)
-        .orderBy('note', descending: true)
-        .snapshots();
+  Future<List<Map<String, dynamic>>> getAvis() {
+    var response =  Supabase.instance.client
+        .from('avis')
+        .select('id, note, content, wonder, user(profil_path, name, uid)')
+        .eq('wonder', idWonder)
+        .order('note', ascending: false);
+    print(response.count());
+    return response;
   }
 
-  Stream<QuerySnapshot> getGuide() {
-    return FirebaseFirestore.instance
-        .collection('guides')
-        .where('wonder', isEqualTo: idWonder)
-        .snapshots();
+  Stream<List<Map<String, dynamic>>> getGuide() {
+    return Supabase.instance.client
+        .from('guide')
+        .stream(primaryKey: ['id'])
+        .eq('wonder', idWonder);
   }
 
   Future<void> addAvis(String content, double note) async {
     final Utilisateur user = await Camwonder().getUserInfo();
-    final QuerySnapshot<Map<String, dynamic>> querySnapshot =
-    await FirebaseFirestore.instance
-        .collection('users')
-        .where('id', isEqualTo: AuthService().currentUser!.uid)
-        .get();
     final Avis avis = Avis(
-        idAvis: "id_sera_genere",
+        idAvis: user.idUser,
         note: note,
         content: content,
         wonder: idWonder,
-        user: querySnapshot.docs.first.id,
-        userImage: user.profilPath);
-    final CollectionReference avisFirebase = FirebaseFirestore.instance.collection('avis');
+        userName : user.nom,
+        userImage: user.profilPath, userId: user.uid);
+
     final double? ancienNote = await getNoteForWonder();
 
     if (ancienNote != null) {
-      if(ancienNote == 0){
-
-        await FirebaseFirestore.instance
-            .collection('wonders')
-            .doc(idWonder)
-            .update({'note': note});
-      }else{
+      if (ancienNote == 0) {
+        await Supabase.instance.client
+            .from('wonder')
+            .update({'note': note})
+            .eq('id', idWonder);
+      } else {
         final double newNote = (ancienNote + note) / 2;
-
-        await FirebaseFirestore.instance
-            .collection('wonders')
-            .doc(idWonder)
-            .update({'note': newNote});
+        await Supabase.instance.client
+            .from('wonder')
+            .update({'note': newNote})
+            .eq('id', idWonder);
       }
     }
 
-    return avisFirebase
-        .add({
+    await Supabase.instance.client.from('avis').insert({
       'note': avis.note,
       'content': avis.content,
       'wonder': avis.wonder,
-      'user': avis.user,
-      'userImage': avis.userImage,
-    })
-        .then((value) {
-      if (kDebugMode) {
-        print("User Added");
-      }
-    })
-        .catchError((error) {
-      if (kDebugMode) {
-        print("Failed to add user: $error");
-      }
+      'user': avis.userId,
     });
   }
 
 
   Future<void> addSignalement(String content) async {
-    final CollectionReference avisFirebase = FirebaseFirestore.instance.collection('signalement');
-
-
-    return avisFirebase
-        .add({
-      'wonder': wonderName,
+    await Supabase.instance.client.from('signalement').insert({
+      'wonder': idWonder,
       'content': content,
-    })
-        .then((value) {
-      if (kDebugMode) {
-        print("Signal Added");
-      }
-    })
-        .catchError((error) {
-      if (kDebugMode) {
-        print("Failed to add signal: $error");
-      }
     });
   }
 
 
   Future<void> addReservation(String numeroTel, int nbrePersonnes, String date) async {
-
-    final CollectionReference ReservationFirebase = FirebaseFirestore.instance.collection('reservations');
-    return ReservationFirebase
-        .add({
-      'user': AuthService().currentUser!.uid,
-      'nbrePersonnes': nbrePersonnes,
-      'numeroTel': numeroTel,
-      'idWonder': idWonder,
+    await Supabase.instance.client.from('reservation').insert({
+      'user': Supabase.instance.client.auth.currentUser!.id,
+      'nbre_personnes': nbrePersonnes,
+      'numero_tel': numeroTel,
+      'wonder': idWonder,
       'date': date,
-      'isload': true,
-      'isvalidate': false,
-      'motif': 'Pas encore traité'
-    })
-        .then((value) {
-      if (kDebugMode) {
-        print("User Added");
-      }
-    })
-        .catchError((error) {
-      if (kDebugMode) {
-        print("Failed to add user: $error");
-      }
+      'is_load': true,
+      'is_validate': false,
+      'motif': 'Pas encore traité',
     });
   }
 
@@ -319,55 +286,33 @@ class Wonder {
 
 
 
-  Future<QuerySnapshot> getEvenement() async {
+  Future<List<Map<String, dynamic>>> getEvenement() async {
     try {
-      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('evenements')
-          .where('idwonder', isEqualTo: idWonder)
-          .get();
+      final response = await Supabase.instance.client
+          .from('evenement')
+          .select()
+          .eq('wonder', idWonder);
 
-      return querySnapshot;
+      return response;
     } catch (e) {
-      rethrow;  // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
+      rethrow;
     }
   }
 
-  Future<QuerySnapshot> getSimilar() async {
+  Future<List<Map<String, dynamic>>> getSimilar() async {
     try {
-      final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-          .collection('wonders')
-          .where('region', isEqualTo: region).limit(6)
-          .get();
+      final response = await Supabase.instance.client
+          .from('wonder')
+          .select()
+          .eq('region', region)
+          .limit(6);
 
-      return querySnapshot;
+      return response;
     } catch (e) {
-      rethrow;  // Optionnel : vous pouvez relancer l'exception ou gérer l'erreur d'une autre manière
+      rethrow;
     }
   }
 
-  /*
-  Future<CollectionReference<Map<String, dynamic>>> getAvantages() async {
-    String? avantageId = await fetchAvantageId(idWonder);
-    return _firestore.collection('avantages_or_inconvenients')..where('avantage', isEqualTo: true).snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return AvantagesInconvenient.fromDocument(doc);
-      }).toList();
-    });
-  }*/
-
-  //getAvis()
-
-  //getPosition()
-
-  //getImages()
-
-  //getSimilary()
-
-  //Reserver()
-
-  //setMeteoTime()
-
-  //List<AvantagesInconvenient> getAvantages()
 }
 
 

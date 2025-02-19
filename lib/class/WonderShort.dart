@@ -1,47 +1,52 @@
+import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/classes.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:camwonders/services/camwonders.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class WonderShort{
-  final String idWonderShort;
+class WonderShort {
+  final int idWonderShort;
   int like;
   final String desc;
   final String videoPath;
   final String dateUpload;
   final int vues;
-  final String wond;
+  final int wond;
 
-  WonderShort({required this.idWonderShort,required this.like, required this.desc, required this.videoPath, required this.dateUpload, required this.vues, required this.wond});
+  WonderShort({
+    required this.idWonderShort,
+    required this.like,
+    required this.desc,
+    required this.videoPath,
+    required this.dateUpload,
+    required this.vues,
+    required this.wond,
+  });
 
-  factory WonderShort.fromDocument(DocumentSnapshot doc) {
+  factory WonderShort.fromDocument(Map<String, dynamic> doc) {
     return WonderShort(
-      idWonderShort: doc.id,
-      like: doc['likes'],
-      desc: doc['desc'],
-      videoPath: doc['videoPath'],
-      dateUpload: doc['dateUpload'],
-      vues: doc['vues'],
-      wond: doc['wond'],
+      idWonderShort: doc['id'] as int,
+      like: doc['likes'] as int,
+      desc: doc['description'] as String,
+      videoPath: doc['video_path'] as String,
+      dateUpload: doc['created_at'] as String,
+      vues: doc['vues'] as int,
+      wond: doc['wonder']?['id'] as int,
     );
   }
 
-  String getTitle(){
-    return wond;
-  }
-
-  String getDescription(){
+  String getDescription() {
     return desc;
   }
 
-  Future<int?> getLikes() async{
-    final DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
-        .collection('wondershorts')
-        .doc(idWonderShort)
-        .get();
+  Future<int?> getLikes() async {
+    final response = await Supabase.instance.client
+        .from('wonder_short')
+        .select('likes')
+        .eq('id', idWonderShort)
+        .single();
 
-    if (documentSnapshot.exists) {
-      return (documentSnapshot.get('like') as num).toInt();
+    if (response != null) {
+      return response['likes'] as int;
     }
     return null;
   }
@@ -49,71 +54,63 @@ class WonderShort{
   Future<void> setLike() async {
     final int? likeactu = await getLikes();
     final int likeUpdate = likeactu! + 1;
-    await FirebaseFirestore.instance
-        .collection('wondershorts')
-        .doc(idWonderShort)
-        .update({'like': likeUpdate});
+    await Supabase.instance.client
+        .from('wonder_short')
+        .update({'likes': likeUpdate})
+        .eq('id', idWonderShort);
   }
 
   Future<void> disLike() async {
     final int? likeactu = await getLikes();
     final int likeUpdate = likeactu! - 1;
-    await FirebaseFirestore.instance
-        .collection('wondershorts')
-        .doc(idWonderShort)
-        .update({'like': likeUpdate});
+    await Supabase.instance.client
+        .from('wonder_short')
+        .update({'likes': likeUpdate})
+        .eq('id', idWonderShort);
   }
 
+  Future<int?> getVues() async {
+    final response = await Supabase.instance.client
+        .from('wonder_short')
+        .select('vues')
+        .eq('id', idWonderShort)
+        .single();
 
-  Future<int?> getVues() async{
-    final DocumentSnapshot documentSnapshot = await FirebaseFirestore.instance
-        .collection('wondershorts')
-        .doc(idWonderShort)
-        .get();
-
-    if (documentSnapshot.exists) {
-      return (documentSnapshot.get('vues') as num).toInt();
+    if (response != null) {
+      return response['vues'] as int;
     }
     return null;
   }
 
   Future<void> setVues() async {
-    final int? likeactu = await getLikes();
-    final int likeUpdate = likeactu! + 1;
-    await FirebaseFirestore.instance
-        .collection('wondershorts')
-        .doc(idWonderShort)
-        .update({'vues': likeUpdate});
+    final int? vuesActu = await getVues();
+    final int vuesUpdate = vuesActu! + 1;
+    await Supabase.instance.client
+        .from('wonder_short')
+        .update({'vues': vuesUpdate})
+        .eq('id', idWonderShort);
   }
 
-
   Future<void> addCommentaire(String content) async {
-    final Comment comment = Comment(idComment: "genere", content: content, wondershort: idWonderShort, user: AuthService().currentUser!.uid);
-    final CollectionReference commentaire = FirebaseFirestore.instance.collection('commentaires');
+    final Utilisateur user = await Camwonder().getUserInfo();
+    final Comment comment = Comment(
+      idComment: 1,
+      content: content,
+      wondershort: idWonderShort,
+      idUser: user.uid, userImage: '', userName: '',
+    );
 
-
-    return commentaire
-        .add({
+    await Supabase.instance.client.from('commentaire').insert({
       'content': comment.content,
-      'wondershort': comment.wondershort,
-      'user': comment.user,
-    })
-        .then((value) {
-      if (kDebugMode) {
-        print("Comment Added");
-      }
-    })
-        .catchError((error) {
-      if (kDebugMode) {
-        print("Failed to add comment: $error");
-      }
+      'wonder_short': comment.wondershort,
+      'user': comment.idUser,
     });
   }
 
-  Stream<QuerySnapshot> getCommentaires() {
-    return FirebaseFirestore.instance
-        .collection('commentaires')
-        .where('wondershort', isEqualTo: idWonderShort)
-        .snapshots();
+  Stream<List<Map<String, dynamic>>> getCommentaires() {
+    return Supabase.instance.client
+        .from('commentaire')
+        .stream(primaryKey: ['id'])
+        .eq('wondershort', idWonderShort);
   }
 }

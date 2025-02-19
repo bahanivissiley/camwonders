@@ -1,7 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Offre{
-  final String id;
+  final int id;
   final String title;
   final String content;
   final String textlink;
@@ -10,9 +8,9 @@ class Offre{
 
   Offre({required this.id, required this.title, required this.content, required this.textlink, required this.link, required this.image});
 
-  factory Offre.fromDocument(DocumentSnapshot doc) {
+  factory Offre.fromDocument(Map<String, dynamic> doc) {
     return Offre(
-      id: doc.id,
+      id: doc['id'],
       title: doc['title'],
       content: doc['content'],
       textlink: doc['textlink'],

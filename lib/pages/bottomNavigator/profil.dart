@@ -1,25 +1,23 @@
 // ignore_for_file: use_build_context_synchronously, unused_field
 
 import 'dart:io';
-
 import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:camwonders/pages/AbonnementPage.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/services/camwonders.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/auth_pages/inscription.dart';
 import 'package:camwonders/pages/policies.dart';
 import 'package:camwonders/widgetGlobal.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Profil extends StatefulWidget {
   const Profil({super.key});
@@ -84,48 +82,56 @@ class _ProfilState extends State<Profil> {
   XFile? _image;
 
   Future<void> _pickImage() async {
-    final XFile? selectedImage =
-        await _picker.pickImage(source: ImageSource.gallery);
+    final XFile? selectedImage = await _picker.pickImage(source: ImageSource.gallery);
     setState(() {
       _image = selectedImage;
     });
 
     if (_image != null) {
-      final String fileName =
-          _image!.name; // Vous pouvez générer un nom unique si nécessaire
       final File imageFile = File(_image!.path);
+
       try {
-        if (_image!.path !=
+        // Supprimer l'ancienne image si elle n'est pas l'image par défaut
+        if (profilpath !=
             "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a") {
           try {
-            final storageR = FirebaseStorage.instance.refFromURL(profilpath);
-            await storageR.delete();
+            final oldFileName = profilpath.split('/').last;
+            await Supabase.instance.client.storage
+                .from('profilsUser') // Remplacez par le nom de votre bucket
+                .remove([oldFileName]);
           } catch (e) {
-
+            print('Erreur lors de la suppression de l\'ancienne image : $e');
           }
         }
 
-        final storageRef =
-            FirebaseStorage.instance.ref().child('profilsUser/$fileName');
-        await storageRef.putFile(imageFile);
+        final uploadResponse = await Supabase.instance.client.storage
+            .from('profilsUser') // Remplacez par le nom de votre bucket
+            .upload('public/profil.jpg', imageFile);
 
-        // Récupérer l'URL de téléchargement
-        final String downloadURL = await storageRef.getDownloadURL();
+        if (uploadResponse.isEmpty) {
+          throw Exception('Erreur lors de l\'upload de l\'image : ${uploadResponse.toString()}');
+        }
+
+
+        final String downloadURL = Supabase.instance.client.storage.from('profilsUser').getPublicUrl(uploadResponse);
+
+        // Mettre à jour les SharedPreferences
         final SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('profilPath', downloadURL);
+
+        // Mettre à jour l'état
         setState(() {
           profilpath = downloadURL;
         });
-        final QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('id', isEqualTo: _user!.idUser)
-            .get();
-        for (QueryDocumentSnapshot doc in querySnapshot.docs) {
-          await doc.reference.update({'profilPath': downloadURL});
-        }
-      } catch (e) {
-      }
 
+        // Mettre à jour le profil de l'utilisateur dans la table 'users'
+        await Supabase.instance.client
+            .from('user') // Remplacez par le nom de votre table
+            .update({'profil_path': downloadURL})
+            .eq('uid', _user!.uid); // Remplacez 'id' par le nom de la colonne
+      } catch (e) {
+        print('Erreur lors de la mise à jour de l\'image de profil : $e');
+      }
     }
   }
 
@@ -487,7 +493,8 @@ class _ProfilState extends State<Profil> {
                         }
                       },
                     ),
-                    _user!.nom == "Utilisateur inconnu" ? const SizedBox() : userProvider.isPremium ? const SizedBox() : GestureDetector(
+                    _user == null || _user!.nom  == "Utilisateur inconnu" ? const SizedBox() : (userProvider.isPremium || (_user?.premium ?? false)) ? const SizedBox() : GestureDetector(
+
                       onTap: () {
                         Navigator.push(context, PageRouteBuilder(pageBuilder: (_,__,___) => SubscriptionPage(),
 

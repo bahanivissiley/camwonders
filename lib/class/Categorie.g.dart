@@ -17,24 +17,21 @@ class CategorieAdapter extends TypeAdapter<Categorie> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Categorie(
-      fields[0] as int,
-      fields[1] as String,
-      fields[2] as String,
-      fields[3] as bool,
+      id : fields[0] as int,
+      designation : fields[1] as String,
+      statut : fields[2] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, Categorie obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.idCategory)
-      ..writeByte(1)
-      ..write(obj.categoryName)
-      ..writeByte(2)
-      ..write(obj.iconName)
       ..writeByte(3)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.designation)
+      ..writeByte(2)
       ..write(obj.statut);
   }
 

@@ -2,10 +2,10 @@
 import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Sttories extends StatefulWidget {
   static const verte = Color(0xff226900);
@@ -45,11 +45,18 @@ class _StoriesState extends State<Sttories> {
     return text;
   }
 
-  Future<QuerySnapshot> _fetchImages() async {
-    return FirebaseFirestore.instance
-        .collection('images_wonder')
-        .where('wonder_id', isEqualTo: widget.wond.idWonder)
-        .get();
+  Future<List<Map<String, dynamic>>> _fetchImages() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('images_wonder') // Remplacez 'images_wonder' par le nom de votre table
+          .select() // Sélectionner toutes les colonnes
+          .eq('wonder_id', widget.wond.idWonder); // Filtrer par wonder_id
+
+      return response;
+    } catch (e) {
+      print('Erreur lors de la récupération des images : $e');
+      return [];
+    }
   }
 
   @override
@@ -84,7 +91,7 @@ class _StoriesState extends State<Sttories> {
                 }
               }
             },
-            child: FutureBuilder<QuerySnapshot>(
+            child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _fetchImages(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
@@ -93,27 +100,27 @@ class _StoriesState extends State<Sttories> {
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(
-                      child:
-                          shimmerOffre(width: size.width, height: size.height));
+                    child: shimmerOffre(width: size.width, height: size.height),
+                  );
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(child: Text('No images found.'));
                 }
 
-                final documents = snapshot.data!.docs;
+                final documents = snapshot.data!;
 
                 return PageView.builder(
-                    controller: _pageStorieController,
-                    itemCount: documents.length,
-                    itemBuilder: (context, index) {
-                      final document = documents[index];
-                      final data = document.data() as Map<String, dynamic>;
-                      return Sttorie(
-                        path: data['image_url'],
-                        wonderName: widget.wond.wonderName,
-                      );
-                    });
+                  controller: _pageStorieController,
+                  itemCount: documents.length,
+                  itemBuilder: (context, index) {
+                    final data = documents[index];
+                    return Sttorie(
+                      path: data['image_url'], // Remplacez 'image_url' par le nom de la colonne
+                      wonderName: widget.wond.wonderName,
+                    );
+                  },
+                );
               },
             ),
           ),

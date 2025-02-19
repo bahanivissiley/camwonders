@@ -19,11 +19,20 @@ class page_favoris extends StatefulWidget {
 
 class _page_favorisState extends State<page_favoris> {
   late Box<Wonder> favorisBox;
+  bool isLoading = true; // Indicateur de chargement
 
   @override
   void initState() {
     super.initState();
+    _loadFavoris();
+  }
+
+  Future<void> _loadFavoris() async {
+    await Future.delayed(Duration(seconds: 1)); // Simuler un temps de chargement
     favorisBox = Hive.box<Wonder>('favoris_wonder');
+    setState(() {
+      isLoading = false; // Les données sont chargées
+    });
   }
 
 
@@ -40,7 +49,7 @@ class _page_favorisState extends State<page_favoris> {
         title: Center(child: Text("MES WONDERS FAVORIS", style: GoogleFonts.lalezar(textStyle: const TextStyle(color: page_favoris.verte, fontSize: 23)),)),
       ),
       body: Container(
-        child: favorisBox.isEmpty
+        child: isLoading
         ? const Center(child: CircularProgressIndicator(),)
         : ValueListenableBuilder(
           valueListenable: favorisBox.listenable(),

@@ -5,7 +5,7 @@ import 'package:camwonders/pages/bottomNavigator/reservations.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/class/Categorie.dart';
 import 'package:camwonders/class/Wonder.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/menu.dart';
 import 'package:camwonders/pages/bottomNavigator/profil.dart';
@@ -13,7 +13,6 @@ import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/pages/bottomNavigator/wondershort.dart';
 import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:camwonders/widgetGlobal.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,8 +23,9 @@ import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 class PageCategorie extends StatefulWidget {
-  final Categorie cat;
-  const PageCategorie({super.key, required this.cat});
+  final String cat;
+  final int id_categorie;
+  const PageCategorie({super.key, required this.cat, required this.id_categorie});
 
   @override
   State<PageCategorie> createState() => _PageCategorieState();
@@ -70,7 +70,7 @@ class _PageCategorieState extends State<PageCategorie> {
       WondersBody(
         size: size,
         listewonderscat: wonderProvider.wondersStream,
-        cat: widget.cat,
+        cat: widget.cat, id_categorie: widget.id_categorie,
       ),
     ];
     return Scaffold(
@@ -288,12 +288,13 @@ class WondersBody extends StatefulWidget {
     super.key,
     required this.size,
     required this.listewonderscat,
-    required this.cat,
+    required this.cat, required this.id_categorie,
   });
 
   final Size size;
-  Stream<QuerySnapshot> listewonderscat;
-  final Categorie cat;
+  Stream<List<Map<String, dynamic>>> listewonderscat;
+  final String cat;
+  final int id_categorie;
 
   @override
   State<WondersBody> createState() => _WondersBodyState();
@@ -335,7 +336,7 @@ class _WondersBodyState extends State<WondersBody> {
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0.0,
-        title: Center(child: Text(widget.cat.categoryName)),
+        title: Center(child: Text(widget.cat)),
         actions: [
           AuthService().currentUser == null
               ? Container(
@@ -433,7 +434,6 @@ class _WondersBodyState extends State<WondersBody> {
                           builder: (BuildContext context) {
                             return FilterDialog(
                               cat: widget.cat,
-                              listewonderscat: widget.listewonderscat,
                             );
                           },
                         );
@@ -478,10 +478,9 @@ class _WondersBodyState extends State<WondersBody> {
                       height: 50,
                       showChildOpacityTransition: false,
                       springAnimationDurationInMilliseconds: 700,
-                      child: StreamBuilder<QuerySnapshot>(
+                      child: StreamBuilder<List<Map<String, dynamic>>>(
                         stream: widget.listewonderscat,
-                        builder: (BuildContext context,
-                            AsyncSnapshot<QuerySnapshot> snapshot) {
+                        builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
                           if (snapshot.hasError) {
                             return const Text('Something went wrong');
                           }
@@ -498,7 +497,7 @@ class _WondersBodyState extends State<WondersBody> {
                             );
                           }
 
-                          if (snapshot.data!.docs.isEmpty) {
+                          if (snapshot.data!.isEmpty) {
                             return Center(
                                 child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -518,15 +517,14 @@ class _WondersBodyState extends State<WondersBody> {
 
                           return ListView.builder(
                               shrinkWrap: true,
-                              itemCount: snapshot.data!.docs.length,
+                              itemCount: snapshot.data!.length,
                               itemBuilder: (BuildContext context, int index) {
-                                final DocumentSnapshot document =
-                                    snapshot.data!.docs[index];
+                                final Map<String, dynamic> document = snapshot.data![index];
                                 final Wonder wond = Wonder(
-                                    idWonder: document.id,
-                                    wonderName: document['wonderName'],
+                                    idWonder: document['id'],
+                                    wonderName: document['wonder_name'],
                                     description: document['description'],
-                                    imagePath: document['imagePath'],
+                                    imagePath: document['image_path'],
                                     city: document['city'],
                                     region: document['region'],
                                     free: document['free'],
@@ -536,8 +534,10 @@ class _WondersBodyState extends State<WondersBody> {
                                     longitude: document['longitude'],
                                     note: (document['note'] as num).toDouble(),
                                     categorie: document['categorie'],
-                                    isreservable: document['isreservable'],
-                                    acces: document['acces']);
+                                    isreservable: document['is_reservable'],
+                                    acces: document['acces'],
+                                    description_acces: document['description_acces'],
+                                    is_premium: document['is_premium']);
                                 return GestureDetector(
                                   onTap: () {
                                     (userProvider.isPremium || wond.free) ? Navigator.push(
@@ -995,9 +995,8 @@ class _WonderWidgetState extends State<WonderWidget>
 
 
 class FilterDialog extends StatefulWidget {
-  FilterDialog({super.key, required this.cat, required this.listewonderscat});
-  final Categorie cat;
-  Stream<QuerySnapshot> listewonderscat;
+  FilterDialog({super.key, required this.cat});
+  final String cat;
 
   @override
   FilterDialogState createState() => FilterDialogState();
@@ -1125,7 +1124,7 @@ class FilterDialogState extends State<FilterDialog> {
         ElevatedButton(
           onPressed: () {
             final wondersProvider = Provider.of<WondersProvider>(context, listen: false);
-            wondersProvider.applyFilters(_selectedForfait, _selectedRegion, _selectedCity, widget.cat.categoryName);
+            wondersProvider.applyFilters(_selectedForfait, _selectedRegion, _selectedCity, widget.cat);
             setState(() {
             });
             Navigator.of(context).pop();

@@ -2,7 +2,6 @@ import 'package:camwonders/main.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 
 class NotificationModel {
@@ -108,7 +107,7 @@ class NotificationProvider extends ChangeNotifier {
 
 
 
-
+/*
 class FirebaseMessagingService {
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
@@ -145,3 +144,5 @@ class FirebaseMessagingService {
     );
   }
 }
+
+*/

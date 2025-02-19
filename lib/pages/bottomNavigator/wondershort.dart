@@ -3,13 +3,12 @@ import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/class/WonderShort.dart';
 import 'package:camwonders/class/classes.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/pages/wonder_page.dart';
 import 'package:camwonders/services/cachemanager.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/widgetGlobal.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -212,6 +211,8 @@ class _VideoShortState extends State<VideoShort> {
   Wonder? _wonder; // Utiliser null pour indiquer que les données sont en cours de chargement
   bool _isLoading = true; // Indicateur de chargement
   String? _errorMessage; // Message d'erreur en cas de problème
+  bool _isPlaying = true;
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -241,11 +242,56 @@ class _VideoShortState extends State<VideoShort> {
     }
   }
 
+
+  void _togglePlayPause() {
+    setState(() {
+      if (widget.controller.value.isPlaying) {
+        widget.controller.pause();
+        _isPlaying = false;
+      } else {
+        widget.controller.play();
+        _isPlaying = true;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        VideoPlayer(widget.controller),
+        Stack(
+          alignment: Alignment(1, 1),
+          children: [
+            GestureDetector(
+              onTap: (){
+                _togglePlayPause();
+              },
+                child: VideoPlayer(widget.controller)
+            ),
+            VideoProgressIndicator(
+              widget.controller,
+              allowScrubbing: true,
+              colors: const VideoProgressColors(
+                playedColor: Colors.green,
+                bufferedColor: Colors.grey,
+                backgroundColor: Colors.black54,
+              ),
+            ),
+            Positioned(
+              top: 0,
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: !_isPlaying ? IconButton(
+                icon: const Icon(Icons.play_arrow,
+                  color: Colors.white,
+                  size: 80,
+                ),
+                onPressed: _togglePlayPause,
+              ) : const SizedBox(),
+            ),
+          ],
+        ),
         Positioned.fill(
           child: _buildContent(),
         ),
@@ -532,7 +578,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                         Navigator.pop(context);
                       },
                       icon:
-                          const Icon(LucideIcons.xCircle, color: Colors.green),
+                      const Icon(LucideIcons.xCircle, color: Colors.green),
                     ),
                   ],
                 ),
@@ -540,10 +586,9 @@ class _CommentWidgetState extends State<CommentWidget> {
               Expanded(
                 child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 5),
-                    child: StreamBuilder<QuerySnapshot>(
+                    child: StreamBuilder<List<Map<String, dynamic>>>(
                         stream: widget.wondershort.getCommentaires(),
-                        builder: (BuildContext context,
-                            AsyncSnapshot<QuerySnapshot> snapshot) {
+                        builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
                           if (snapshot.hasError) {
                             return const Text("Quelques chose n'a pas marché");
                           }
@@ -560,38 +605,39 @@ class _CommentWidgetState extends State<CommentWidget> {
                             );
                           }
 
-                          if (snapshot.data!.docs.isEmpty) {
+                          if (snapshot.data!.isEmpty) {
                             return Center(
                                 child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  height:
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      height:
                                       MediaQuery.of(context).size.height / 20,
-                                  margin: const EdgeInsets.all(20),
-                                  child: Image.asset('assets/review.png'),
-                                ),
-                                const Text("Pas de commentaires !")
-                              ],
-                            ));
+                                      margin: const EdgeInsets.all(20),
+                                      child: Image.asset('assets/review.png'),
+                                    ),
+                                    const Text("Pas de commentaires !")
+                                  ],
+                                ));
                           }
 
                           return ListView.separated(
                             shrinkWrap: true,
-                            itemCount: snapshot.data!.docs.length,
+                            itemCount: snapshot.data!.length,
                             itemBuilder: (BuildContext context, int index) {
-                              final DocumentSnapshot document =
-                                  snapshot.data!.docs[index];
+                              final Map<String, dynamic> document = snapshot.data![index];
                               final Comment com = Comment(
-                                  idComment: document.id,
+                                  idComment: document['id'],
+                                  idUser: document['user']?['id'],
                                   content: document['content'],
                                   wondershort: document['wondershort'],
-                                  user: document['user']);
+                              userImage: document['user']?['profil_path'],
+                              userName: document['user']?['name']);
                               return CommentaireWidget(com: com);
                             },
                             separatorBuilder:
                                 (BuildContext context, int index) =>
-                                    const Divider(
+                            const Divider(
                               color: Colors.green,
                               thickness: 1,
                               indent: 45,
@@ -629,10 +675,10 @@ class _CommentWidgetState extends State<CommentWidget> {
                       imageUrl: userProvider.profilPath,
                       placeholder: (context, url) => const Center(
                           child: CircularProgressIndicator(
-                        color: Color(0xff226900),
-                      )),
+                            color: Color(0xff226900),
+                          )),
                       errorWidget: (context, url, error) =>
-                          const Center(child: Icon(Icons.error)),
+                      const Center(child: Icon(Icons.error)),
                       fit: BoxFit.cover,
                     ),
                   ),
@@ -687,7 +733,7 @@ class CommentaireWidget extends StatefulWidget {
 
 class _CommentaireWidgetState extends State<CommentaireWidget> {
   String username = "Chargement...";
-  String profilPath = "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png"; // Remplacer par l'URL d'une image par défaut
+  String profilPath = "https://www.camwonders.com/static/img/Logo.jpg"; // Remplacer par l'URL d'une image par défaut
   bool _isLoading = true;
 
   @override
@@ -699,7 +745,7 @@ class _CommentaireWidgetState extends State<CommentaireWidget> {
   void _loadUser() async {
     // Appel de la méthode pour récupérer l'utilisateur
     try {
-      final Utilisateur? user = await Camwonder().getUserByUniqueId(widget.com.user);
+      final Utilisateur? user = await Camwonder().getUserByUniqueRealId(widget.com.idUser);
       // Vérification de l'état du widget avant de mettre à jour l'état
       if (mounted) {
         setState(() {
@@ -737,33 +783,33 @@ class _CommentaireWidgetState extends State<CommentaireWidget> {
           children: [
             _isLoading
                 ? Container(
-                    padding: const EdgeInsets.all(10),
-                    child: const CircularProgressIndicator(
-                      color: Color(0xff226900),
-                    ))
+                padding: const EdgeInsets.all(10),
+                child: const CircularProgressIndicator(
+                  color: Color(0xff226900),
+                ))
                 : Container(
-                    margin: const EdgeInsets.only(right: 15),
-                    height: MediaQuery.of(context).size.height / 18,
-                    width: MediaQuery.of(context).size.height / 18,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      color: Colors.grey,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(500),
-                      child: CachedNetworkImage(
-                        cacheManager: CustomCacheManagerLong(),
-                        imageUrl: profilPath,
-                        placeholder: (context, url) => Center(
-                            child: SizedBox(
-                              child: Image.asset('assets/holder.jpg'),
-                            ),),
-                        errorWidget: (context, url, error) =>
-                            const Center(child: Icon(Icons.error)),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
+              margin: const EdgeInsets.only(right: 15),
+              height: MediaQuery.of(context).size.height / 18,
+              width: MediaQuery.of(context).size.height / 18,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                color: Colors.grey,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(500),
+                child: CachedNetworkImage(
+                  cacheManager: CustomCacheManagerLong(),
+                  imageUrl: profilPath,
+                  placeholder: (context, url) => Center(
+                    child: SizedBox(
+                      child: Image.asset('assets/holder.jpg'),
+                    ),),
+                  errorWidget: (context, url, error) =>
+                  const Center(child: Icon(Icons.error)),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

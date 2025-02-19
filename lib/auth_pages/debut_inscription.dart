@@ -2,15 +2,15 @@
 import 'dart:async';
 import 'package:camwonders/auth_pages/suite_inscription.dart';
 import 'package:camwonders/services/camwonders.dart';
-import 'package:camwonders/firebase/firebase_logique.dart';
+import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/mainapp.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:gif/gif.dart';
 import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Debut_Inscription extends StatefulWidget {
   const Debut_Inscription({super.key});
@@ -26,65 +26,56 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
   final GlobalKey<FormState> _formKey = GlobalKey();
   String phoneNumber = '';
   String contenupop = "Le message est entrain d'etre envoyé";
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   FocusNode focusNode = FocusNode();
 
   void _verifyPhoneNumber() async {
     try {
-      await _auth
-          .verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          await _auth.signInWithCredential(credential);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          if (e.code == 'invalid-phone-number') {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text("Le numero de telephone n'est pas valide.")),
-            );
-          } else {
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Verification du numero de telephone echoué.')),
-            );
-          }
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (BuildContext context) => Suite_Inscription(
-                        phoneNumber: phoneNumber,
-                        verificationId: verificationId,
-                      )));
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {},
-        timeout:
-            const Duration(seconds: 5), // Délai d'expiration de 30 secondes
-      )
-          .timeout(
-        const Duration(
-            seconds: 5), // Timeout de 30 secondes pour toute l'opération
-        onTimeout: () {
-          throw TimeoutException(
-              'The phone verification process timed out. Please try again.');
+      // Afficher un indicateur de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Veuillez patienter...'),
+              ],
+            ),
+          );
         },
       );
-    } on TimeoutException catch (_) {
+
+      // Envoyer un code OTP au numéro de téléphone
+      final response = await Supabase.instance.client.auth.signInWithOtp(
+        phone: phoneNumber,
+      );
+
+      // Fermer l'indicateur de chargement
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'The phone verification process timed out. Please try again.')),
-      );
+
+        // Rediriger vers l'écran de vérification du code OTP
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (BuildContext context) => Suite_Inscription(
+              phoneNumber: phoneNumber,
+            ),
+          ),
+        );
     } catch (e) {
+      // Fermer l'indicateur de chargement en cas d'erreur
       Navigator.pop(context);
+
+      // Afficher un message d'erreur
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('An error occurred. Please try again.')),
+        SnackBar(
+          content: Text("Une erreur est survenue : $e"),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -314,7 +305,8 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                     await Logique.checkInternetConnection();
 
                                 if (isConnected) {
-                                  if (await AuthService().signInWithGoogle() !=
+                                  final googleUser = await AuthService().signInWithGoogle();
+                                  if (googleUser !=
                                       null) {
                                     showModalBottomSheet(
                                         context: context,
@@ -359,10 +351,10 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                         });
 
                                     Camwonder().createUser(
-                                        AuthService().currentUser!.displayName,
-                                        AuthService().currentUser!.email,
-                                        AuthService().currentUser!.uid,
-                                        AuthService().currentUser!.photoURL, context);
+                                        googleUser.displayName,
+                                        googleUser.email,
+                                        AuthService().currentUser!.id,
+                                        googleUser.photoUrl, context);
                                     await Future.delayed(
                                         const Duration(seconds: 2));
 
@@ -509,76 +501,78 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
                                     await Logique.checkInternetConnection();
 
                                 if (isConnected) {
-                                  await AuthService().signInWithApple();
-                                  showModalBottomSheet(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return AnimatedContainer(
-                                          duration: const Duration(
-                                              milliseconds: 200),
-                                          curve: Curves.easeIn,
-                                          child: Container(
-                                            height: height / 3,
-                                            padding: EdgeInsets.only(
-                                                top: height / 12),
-                                            child: Center(
-                                              child: Column(
-                                                children: [
-                                                  Gif(
-                                                    height: 100,
-                                                    image: const AssetImage(
-                                                        "assets/succes.gif"),
-                                                    autostart: Autostart.loop,
-                                                  ),
-                                                  Container(
-                                                    margin:
-                                                        const EdgeInsets.only(
-                                                            top: 15),
-                                                    child: Text(
-                                                        "Authentification reussi",
-                                                        style: GoogleFonts.lalezar(
-                                                            textStyle: const TextStyle(
-                                                                fontSize: 30,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color:
-                                                                    verte))),
-                                                  )
-                                                ],
+                                  final appleUser = await AuthService().signInWithApple();
+                                  if(appleUser != null){
+                                    showModalBottomSheet(
+                                        context: context,
+                                        builder: (BuildContext context) {
+                                          return AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 200),
+                                            curve: Curves.easeIn,
+                                            child: Container(
+                                              height: height / 3,
+                                              padding: EdgeInsets.only(
+                                                  top: height / 12),
+                                              child: Center(
+                                                child: Column(
+                                                  children: [
+                                                    Gif(
+                                                      height: 100,
+                                                      image: const AssetImage(
+                                                          "assets/succes.gif"),
+                                                      autostart: Autostart.loop,
+                                                    ),
+                                                    Container(
+                                                      margin:
+                                                      const EdgeInsets.only(
+                                                          top: 15),
+                                                      child: Text(
+                                                          "Authentification reussi",
+                                                          style: GoogleFonts.lalezar(
+                                                              textStyle: const TextStyle(
+                                                                  fontSize: 30,
+                                                                  fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                                  color:
+                                                                  verte))),
+                                                    )
+                                                  ],
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                        );
-                                      });
+                                          );
+                                        });
 
-                                  Camwonder().createUser(
-                                      AuthService().currentUser!.displayName,
-                                      AuthService().currentUser!.email,
-                                      AuthService().currentUser!.uid,
-                                      AuthService().currentUser!.photoURL, context);
-                                  await Future.delayed(
-                                      const Duration(seconds: 2));
+                                    Camwonder().createUser(
+                                        appleUser.givenName,
+                                        appleUser.email,
+                                        appleUser.userIdentifier!,
+                                        "dd", context);
+                                    await Future.delayed(
+                                        const Duration(seconds: 2));
 
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                      context,
-                                      PageRouteBuilder(
-                                          pageBuilder: (context, animation,
-                                                  secondaryAnimation) =>
-                                              const MainApp(),
-                                          transitionsBuilder: (context,
-                                              animation,
-                                              secondaryAnimation,
-                                              child) {
-                                            animation = CurvedAnimation(
-                                                parent: animation,
-                                                curve: Curves.easeIn);
-                                            return FadeTransition(
-                                              opacity: animation,
-                                              child: child,
-                                            );
-                                          }));
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                        context,
+                                        PageRouteBuilder(
+                                            pageBuilder: (context, animation,
+                                                secondaryAnimation) =>
+                                            const MainApp(),
+                                            transitionsBuilder: (context,
+                                                animation,
+                                                secondaryAnimation,
+                                                child) {
+                                              animation = CurvedAnimation(
+                                                  parent: animation,
+                                                  curve: Curves.easeIn);
+                                              return FadeTransition(
+                                                opacity: animation,
+                                                child: child,
+                                              );
+                                            }));
+                                  }
                                                                 } else {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context)

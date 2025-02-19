@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FilterButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -54,63 +54,55 @@ class FilterButton extends StatelessWidget {
 
 
 class WondersProvider with ChangeNotifier {
-  Stream<QuerySnapshot> _wondersStream = FirebaseFirestore.instance.collection('wonders').snapshots();
+  Stream<List<Map<String, dynamic>>> _wondersStream =
+  Supabase.instance.client.from('wonder').stream(primaryKey: ['id']);
   String _searchQuery = '';
 
-  Stream<QuerySnapshot> get wondersStream => _wondersStream;
+  Stream<List<Map<String, dynamic>>> get wondersStream => _wondersStream;
   String get searchQuery => _searchQuery;
 
-  void loadCategorie(String categorieName) {
-    _wondersStream = FirebaseFirestore.instance
-        .collection('wonders')
-        .where('categorie', isEqualTo: categorieName)
-        .snapshots();
+  void loadCategorie(int categorieName) {
+    _wondersStream = Supabase.instance.client
+        .from('wonder')
+        .stream(primaryKey: ['id'])
+        .eq('categorie', categorieName);
+    notifyListeners();
   }
 
   void applyFilters(String? selectedForfait, String? region, String? ville, String? categorie) {
-    Query query = FirebaseFirestore.instance.collection('wonders');
+    var query = Supabase.instance.client.from('wonder').select();
 
     // Appliquer les filtres
     if (categorie != null) {
-      query = query.where('categorie', isEqualTo: categorie);
+      query = query.eq('categorie', categorie);
     }
 
     if (selectedForfait == 'Payants') {
-      query = query.where('free', isEqualTo: false);
+      query = query.eq('free', false);
     } else if (selectedForfait == 'Non payants') {
-      query = query.where('free', isEqualTo: true);
+      query = query.eq('free', true);
     }
 
     if (region != null && region.isNotEmpty && region != 'Toutes les régions') {
-      query = query.where('region', isEqualTo: region);
+      query = query.eq('region', region);
     }
 
     if (ville != null && ville.isNotEmpty && ville != 'Toutes les villes') {
-      query = query.where('city', isEqualTo: ville);
+      query = query.eq('city', ville);
     }
-
-    print("Etape 3");
 
     // Appliquer la recherche si un terme de recherche est présent
     if (_searchQuery.isNotEmpty) {
-      print("Etape 4");
-      query = query.where('wonderNameLower', isGreaterThanOrEqualTo: _searchQuery)
-          .where('wonderNameLower', isLessThan: '${_searchQuery}z');
-
-      print(query.count().toString());
+      query = query
+          .ilike('wonderNameLower', '${_searchQuery}%');
     }
 
     // Mettre à jour le Stream avec la nouvelle requête
-    _wondersStream = query.snapshots();
-    print("Etape 5");
-    print(_wondersStream.first.toString());
-
+    _wondersStream = query.asStream();
     notifyListeners();
   }
 
   void setSearchQuery(String query) {
-    print("Etape 2");
-    print(query);
     _searchQuery = query;
     applyFilters(null, null, null, null); // Vous pouvez passer des valeurs si nécessaire
   }
@@ -158,4 +150,52 @@ class UserProvider with ChangeNotifier {
     notifyListeners();   // Met à jour l'UI
   }
 
+}
+
+
+class OfferProvider with ChangeNotifier {
+  Stream<List<Map<String, dynamic>>>? _offresStream;
+  int _currentPage = 0;
+  int _nombreOffres = 0;
+
+  Stream<List<Map<String, dynamic>>>? get offresStream => _offresStream;
+  int get currentPage => _currentPage;
+  int get nombreOffres => _nombreOffres;
+
+  OfferProvider() {
+    loadData();
+    _getNumberOfOffers();
+  }
+
+  Future<void> loadData() async {
+    _offresStream = Supabase.instance.client.from('offre').stream(primaryKey: ['id']);
+    notifyListeners();
+  }
+
+  Future<void> _getNumberOfOffers() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('offre')
+          .select('id');
+      _nombreOffres = response.length ?? 0;
+      notifyListeners();
+    } catch (e) {
+      _nombreOffres = 0;
+      notifyListeners();
+    }
+  }
+
+  void setCurrentPage(int page) {
+    _currentPage = page;
+    notifyListeners();
+  }
+
+  void incrementPage() {
+    if (_currentPage < _nombreOffres - 1) {
+      _currentPage++;
+    } else {
+      _currentPage = 0;
+    }
+    notifyListeners();
+  }
 }
