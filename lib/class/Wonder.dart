@@ -80,9 +80,9 @@ class Wonder {
       required this.note,
       required this.categorie,
       required this.isreservable,
-        required this.acces,
-        required this.description_acces,
-        required this.is_premium});
+      required this.acces,
+      required this.description_acces,
+      required this.is_premium});
 
   factory Wonder.fromDocument(Map<String, dynamic> doc) {
     return Wonder(
@@ -118,23 +118,22 @@ class Wonder {
         .eq('id', idWonder)
         .single();
 
-    if (response != null) {
+    if (response.isNotEmpty) {
       return (response['note'] as num).toDouble();
     }
     return null;
   }
 
-  Future<List<String>> fetchAvantageIds() async {
+  Future<List<int>> fetchAvantageIds() async {
     try {
       final response = await Supabase.instance.client
           .from('av_in_wonder')
           .select('an_in')
           .eq('wonder', idWonder);
 
-      final List<String> avantageIds = (response as List)
-          .map((doc) => doc['an_in'] as String)
+      final List<int> avantageIds = (response as List)
+          .map((doc) => doc['an_in'] as int)
           .toList();
-
       return avantageIds;
     } catch (e) {
       return [];
@@ -157,7 +156,7 @@ class Wonder {
       return cachedData;
     }
 
-    final List<String> ids = await fetchAvantageIds();
+    final List<int> ids = await fetchAvantageIds();
     final response = await Supabase.instance.client
         .from('avantage_inconvenient')
         .select()
@@ -176,7 +175,7 @@ class Wonder {
       return cachedData;
     }
 
-    final List<String> ids = await fetchAvantageIds();
+    final List<int> ids = await fetchAvantageIds();
     final response = await Supabase.instance.client
         .from('avantage_inconvenient')
         .select()
@@ -188,14 +187,11 @@ class Wonder {
   }
 
 
-  Future<List<Map<String, dynamic>>> getAvis() {
-    var response =  Supabase.instance.client
+  Stream<List<Map<String, dynamic>>> getAvis() {
+    return Supabase.instance.client
         .from('avis')
-        .select('id, note, content, wonder, user(profil_path, name, uid)')
-        .eq('wonder', idWonder)
-        .order('note', ascending: false);
-    print(response.count());
-    return response;
+        .stream(primaryKey: ['id'])
+        .eq('wonder', idWonder);;
   }
 
   Stream<List<Map<String, dynamic>>> getGuide() {
@@ -237,6 +233,8 @@ class Wonder {
       'content': avis.content,
       'wonder': avis.wonder,
       'user': avis.userId,
+      'user_name': avis.userName,
+      'profil_path_user': avis.userImage
     });
   }
 

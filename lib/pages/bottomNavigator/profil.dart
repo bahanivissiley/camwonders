@@ -18,6 +18,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Profil extends StatefulWidget {
   const Profil({super.key});
@@ -46,7 +47,7 @@ class _ProfilState extends State<Profil> {
 
   Future<void> chargercached() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    devise = prefs.getString('devise')!;
+    devise = prefs.getString('devise') ?? 'FCFA';
     _selectedDevise = devise;
   }
 
@@ -65,6 +66,7 @@ class _ProfilState extends State<Profil> {
   Future<void> _fetchUserInfo() async {
     try {
       final Utilisateur user = await Camwonder().getUserInfo();
+
       setState(() {
         _user = user;
         _isLoading = false;
@@ -91,9 +93,8 @@ class _ProfilState extends State<Profil> {
       final File imageFile = File(_image!.path);
 
       try {
-        // Supprimer l'ancienne image si elle n'est pas l'image par défaut
         if (profilpath !=
-            "https://firebasestorage.googleapis.com/v0/b/camwonders.appspot.com/o/profilInconnu.png?alt=media&token=0221763b-3d58-4340-a027-4105b3d9f66a") {
+            "https://hrqjdfpyaucbqitmxlaq.supabase.co/storage/v1/object/public/profilsUser/public/inconnu.png") {
           try {
             final oldFileName = profilpath.split('/').last;
             await Supabase.instance.client.storage
@@ -106,14 +107,18 @@ class _ProfilState extends State<Profil> {
 
         final uploadResponse = await Supabase.instance.client.storage
             .from('profilsUser') // Remplacez par le nom de votre bucket
-            .upload('public/profil.jpg', imageFile);
+            .upload('public/profil_${_user!.identifiant}.jpg', imageFile);
 
         if (uploadResponse.isEmpty) {
           throw Exception('Erreur lors de l\'upload de l\'image : ${uploadResponse.toString()}');
         }
 
+        final String downloadURL = 'https://hrqjdfpyaucbqitmxlaq.supabase.co/storage/v1/object/public/$uploadResponse';
 
-        final String downloadURL = Supabase.instance.client.storage.from('profilsUser').getPublicUrl(uploadResponse);
+        await Supabase.instance.client
+            .from('user')
+            .update({'profil_path': downloadURL})
+            .eq('uid', Supabase.instance.client.auth.currentUser!.id);
 
         // Mettre à jour les SharedPreferences
         final SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -137,7 +142,7 @@ class _ProfilState extends State<Profil> {
 
   final List<String> langues = [
     'Français',
-    'English',
+    //'English',
     // Ajoutez d'autres notifications selon vos besoins
   ];
 
@@ -173,10 +178,6 @@ class _ProfilState extends State<Profil> {
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(200),
-                              color: Theme.of(context).brightness ==
-                                      Brightness.light
-                                  ? Colors.grey
-                                  : Colors.black38,
                             ),
                             margin: const EdgeInsets.all(15),
                             height: MediaQuery.of(context).size.height / 6,
@@ -694,6 +695,18 @@ class _ProfilState extends State<Profil> {
                                     const SizedBox(height: 30,),
                                     const Text(
                                         "Camwonders est une application mobile de tourisme destinée au amoureux de tourisme et de nouvelle expérience tant nationaux, qu'internatinaux. Elle redefinit la focon de decouvrir les lieux au cameroun"),
+                                    const SizedBox(height: 10,),
+                                    TextButton(
+                                        onPressed: () async {
+                                          final Uri url = Uri.parse("https://www.camwonders.com");
+                                          if (await canLaunchUrl(url)) {
+                                          await launchUrl(url);
+                                          } else {
+                                          throw "Impossible d'ouvrir le lien";
+                                          }
+                                        },
+                                        child: Text('Site web : www.camwonders.com'),
+                                    ),
                                     const SizedBox(height: 30,),
                                     const Row(
                                       children: [

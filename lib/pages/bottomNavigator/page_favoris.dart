@@ -30,9 +30,11 @@ class _page_favorisState extends State<page_favoris> {
   Future<void> _loadFavoris() async {
     await Future.delayed(Duration(seconds: 1)); // Simuler un temps de chargement
     favorisBox = Hive.box<Wonder>('favoris_wonder');
-    setState(() {
-      isLoading = false; // Les données sont chargées
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false; // Les données sont chargées
+      });
+    }
   }
 
 

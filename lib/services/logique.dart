@@ -6,7 +6,7 @@ import 'package:internet_connection_checker_plus/internet_connection_checker_plu
 class Logique {
   late Box<Wonder> favorisBox;
   void SetFavorisWonder(Wonder wonder){
-    favorisBox = Hive.box<Wonder>('favoris_wonders');
+    favorisBox = Hive.box<Wonder>('favoris_wonder');
     favorisBox.add(wonder);
   }
 

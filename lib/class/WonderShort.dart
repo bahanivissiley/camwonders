@@ -97,13 +97,15 @@ class WonderShort {
       idComment: 1,
       content: content,
       wondershort: idWonderShort,
-      idUser: user.uid, userImage: '', userName: '',
+      idUser: user.uid, userImage: user.profilPath, userName: user.nom,
     );
 
     await Supabase.instance.client.from('commentaire').insert({
       'content': comment.content,
       'wonder_short': comment.wondershort,
       'user': comment.idUser,
+      'user_name': comment.userName,
+      'profil_path_user': comment.userImage
     });
   }
 
@@ -111,6 +113,6 @@ class WonderShort {
     return Supabase.instance.client
         .from('commentaire')
         .stream(primaryKey: ['id'])
-        .eq('wondershort', idWonderShort);
+        .eq('wonder_short', idWonderShort);
   }
 }

@@ -65,9 +65,9 @@ class Avis{
       note: doc['note'],
       content: doc['content'],
       wonder: doc['wonder'],
-      userImage: doc['user']?['profil_path'] as String,
-      userName: doc['user']?['name'] as String,
-      userId: doc['user']?['uid'],
+      userImage: doc['profil_path_user'],
+      userName: doc['user_name'],
+      userId: doc['user'],
     );
   }
 }
@@ -87,8 +87,8 @@ class Guide{
     return Guide(
       id: doc['id'],
       numero: doc['numero'] as String,
-      nom: doc['nom']as String,
-      wonder: doc['wonder']?['id'],
+      nom: doc['nom'] as String,
+      wonder: doc['wonder'],
       profilPath: doc['profil_path'] as String,
     );
   }
@@ -110,9 +110,9 @@ class Comment{
       idComment: doc['id'],
       idUser: doc['user']?['uid'],
       content: doc['content'],
-      wondershort: doc['wonder_short']?['id'],
-      userImage: doc['user']?['profil_path'] as String,
-      userName: doc['user']?['name'] as String,
+      wondershort: doc['wonder_short'],
+      userImage: doc['profil_path_user'],
+      userName: doc['user_name'],
     );
   }
 }
@@ -136,7 +136,7 @@ class Evenements{
       title: doc['title'],
       numeroTel: doc['numero_tel'],
       imagePath: doc['image_path'],
-      idWonder: doc['wonder']?['id'],
+      idWonder: doc['wonder'],
       date: doc['date'],
     );
   }

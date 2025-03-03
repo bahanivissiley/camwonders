@@ -31,9 +31,9 @@ class WonderAdapter extends TypeAdapter<Wonder> {
       note: fields[11] as double,
       categorie: fields[12] as int,
       isreservable: fields[13] as bool,
-      acces: fields[14] as String,
-      description_acces: fields[15] as String,
-      is_premium: fields[16] as bool,
+      acces: fields[14] as String? ?? '',
+      description_acces: fields[15] as String? ?? '',
+      is_premium: fields[16] as bool? ?? false,
     );
   }
 
@@ -72,7 +72,9 @@ class WonderAdapter extends TypeAdapter<Wonder> {
       ..writeByte(14)
       ..write(obj.acces)
       ..writeByte(15)
-      ..write(obj.description_acces);
+      ..write(obj.description_acces)
+      ..writeByte(16)
+      ..write(obj.is_premium);
   }
 
   @override

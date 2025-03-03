@@ -1,11 +1,14 @@
 // ignore_for_file: use_build_context_synchronously, camel_case_types
 import 'dart:async';
 import 'package:camwonders/auth_pages/suite_inscription.dart';
+import 'package:camwonders/class/Notification.dart';
+import 'package:camwonders/main.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/services/logique.dart';
 import 'package:camwonders/mainapp.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:gif/gif.dart';
@@ -79,6 +82,7 @@ class _Debut_InscriptionState extends State<Debut_Inscription> {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,11 +1,13 @@
 import 'package:camwonders/firebase/supabase_logique.dart';
 import 'package:camwonders/mainapp.dart';
 import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
+import 'package:camwonders/pages/paiementPage.dart';
 import 'package:camwonders/services/camwonders.dart';
 import 'package:camwonders/widgetGlobal.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SubscriptionPage extends StatefulWidget {
   @override
@@ -14,48 +16,66 @@ class SubscriptionPage extends StatefulWidget {
 
 class _SubscriptionPageState extends State<SubscriptionPage> {
   int selectedOption = 0;
+  final SupabaseClient supabase = Supabase.instance.client;
+  List<Map<String, dynamic>> tarifs = [];
 
+  @override
+  void initState() {
+    super.initState();
+    fetchTarifs();
+  }
+
+  Future<void> fetchTarifs() async {
+    print('Etape 1');
+    final response = await supabase.from('tarifs').select();
+    print('Etape 2');
+    if (response.isNotEmpty) {
+      print('Etape 3');
+      setState(() {
+        tarifs = response;
+      });
+    }
+  }
 
   void lancerPaiement(BuildContext context) async {
-    Navigator.pop(context);
-    await Camwonder.updatePremiumStatusByFieldId(AuthService().currentUser!.id, true);
-    Provider.of<UserProvider>(context, listen: false).setPremium(true);
-
-    // Attendre un peu avant de rediriger
-    Future.delayed(const Duration(seconds: 3), () {
+    if(selectedOption == 0){
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return const AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.green,),
+                SizedBox(height: 15),
+                Text('Traitement', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+          );
+        },
+      );
+      Future.delayed(const Duration(seconds: 3));
+      await Camwonder.updatePremiumStatusByFieldId(AuthService().currentUser!.id, true);
+      Provider.of<UserProvider>(context, listen: false).setPremium(true);
       Navigator.pop(context);
       Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => MainApp()),
-            (Route<dynamic> route) => false,
+          context,
+          MaterialPageRoute(
+              builder: (context) => MainApp()),
+              (Route<dynamic> route) => false
       );
-    });
 
-    _afficherModal(context, 'Paiement Réussi', Icons.check_circle, Colors.green);
+    }else{
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => PaymentPage(
+                amount: selectedOption,
+              )));
+    }
 
   }
-
-
-  void _afficherModal(BuildContext context, String message, IconData icon, Color color) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Icon(icon, color: color, size: 50),
-          content: Text(message, textAlign: TextAlign.center),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +84,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         padding: const EdgeInsets.all(30.0),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [ListeVue.verte, Colors.greenAccent],
+            colors: [ListeVue.verte, Colors.black],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -102,7 +122,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     buildFeatureText("Accès aux itinéraires"),
                     buildFeatureText("Contacter un des guides certifiés"),
                     buildFeatureText("Pouvoir participer à des événements"),
-                    buildFeatureText("Pouvoir reserver des places dans les places reservables"),
+                    buildFeatureText(
+                        "Pouvoir reserver des places dans les places reservables"),
                     buildFeatureText("Acces à des offres et réduction"),
                     buildFeatureText("Supprimer toutes les publicités"),
                   ],
@@ -110,30 +131,22 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               ],
             ),
             Column(
-              children: [
-                buildSubscriptionOption(
-                  title: "1 Mois",
-                  price: "2000 FCFA / Mois",
-                  selected: selectedOption == 2000,
+              children: tarifs.map((tarif) {
+                return buildSubscriptionOption(
+                  title: "${tarif['periode']}",
+                  price: "${tarif['montant']} FCFA / ${tarif['periode']}",
+                  discount: tarif['reduction'] != null ? "Économisez ${tarif['reduction']}%" : null,
+                  originalPrice: tarif['reduction'] != null
+                      ? "${(tarif['montant'] * 100 / (100 - tarif['reduction'])).toInt()} FCFA"
+                      : null,
+                  selected: selectedOption == tarif['montant'],
                   onTap: () {
                     setState(() {
-                      selectedOption = 2000;
+                      selectedOption = tarif['montant'];
                     });
                   },
-                ),
-                buildSubscriptionOption(
-                  title: "12 Mois",
-                  price: " 12 000 FCFA / Month",
-                  discount: "Economisez 50%",
-                  originalPrice: "24 000 FCFA",
-                  selected: selectedOption == 12000,
-                  onTap: () {
-                    setState(() {
-                      selectedOption = 12000;
-                    });
-                  },
-                ),
-              ],
+                );
+              }).toList(),
             ),
             Column(
               children: [
@@ -141,42 +154,23 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                   "Commencez votre essaie de 7jours gratuitement",
                   style: GoogleFonts.jura(
                     fontSize: 12,
-                    color: Colors.black,
+                    color: Colors.white,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () async {
-                    showDialog(
-                      context: context,
-                      barrierDismissible:
-                      false, // Empêche la fermeture du modal en cliquant à l'extérieur
-                      builder: (BuildContext context) {
-                        return const AlertDialog(
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircularProgressIndicator(), // Indicateur de chargement
-                              SizedBox(height: 16), // Espacement
-                              Text('Veuillez patienter...'),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-
-                    Future.delayed(const Duration(seconds: 4));
 
                     lancerPaiement(context);
-
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 12),
                   ),
                   child: Text(
                     "Effectuez le paiement",
@@ -214,8 +208,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   }
 
   Widget buildSubscriptionOption({
-    required String title,
-    required String price,
+    String? title,
+    String? price,
     required bool selected,
     String? discount,
     String? originalPrice,
@@ -232,7 +226,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
             color: selected ? Colors.white : Colors.transparent,
             width: 2,
           ),
-          color: selected ? Colors.white.withValues(alpha:0.2) : Colors.transparent,
+          color: selected
+              ? Colors.white.withValues(alpha: 0.2)
+              : Colors.transparent,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -244,7 +240,8 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                   children: [
                     if (discount != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.orange,
                           borderRadius: BorderRadius.circular(8),
@@ -260,7 +257,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                       ),
                     if (discount != null) const SizedBox(width: 8),
                     Text(
-                      title,
+                      title!,
                       style: GoogleFonts.jura(
                         color: Colors.white,
                         fontSize: 16,
@@ -279,7 +276,7 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                     ),
                   ),
                 Text(
-                  price,
+                  price!,
                   style: GoogleFonts.jura(
                     color: Colors.white,
                     fontSize: 16,
@@ -288,7 +285,9 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
               ],
             ),
             Icon(
-              selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
               color: Colors.white,
             ),
           ],

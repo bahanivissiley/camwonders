@@ -8,6 +8,7 @@ import 'package:camwonders/widgetGlobal.dart';
 import 'package:flutter/material.dart';
 import 'package:adaptive_theme/adaptive_theme.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:event_bus/event_bus.dart';
@@ -23,8 +24,10 @@ class NotificationEvent {
 }
 
 
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  NotificationService().init();
 
   await Hive.initFlutter();
   Hive.registerAdapter(WonderAdapter());
@@ -44,12 +47,31 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => WondersProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => OfferProvider()),
       ],
       child: const MyApp(),
     ),
   );
 
 }
+
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+FlutterLocalNotificationsPlugin();
+
+Future<void> _initializeNotifications() async {
+  const AndroidInitializationSettings initializationSettingsAndroid =
+  AndroidInitializationSettings('@mipmap/ic_launcher');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+}
+
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

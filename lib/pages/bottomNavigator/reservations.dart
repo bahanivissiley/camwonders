@@ -105,14 +105,14 @@ class _reservationsState extends State<reservations> {
                         children: snapshot.data!
                             .map((Map<String, dynamic> document) {
                           final Reservations reservation = Reservations(
-                              idReservation: document['user'],
+                              idReservation: document['id'],
                               user: document['user'],
-                              nbrePersonnes: document['nbrePersonnes'],
-                              numeroTel: document['numeroTel'],
-                              idWonder: document['idWonder'],
+                              nbrePersonnes: document['nbre_personnes'],
+                              numeroTel: document['numero_tel'],
+                              idWonder: document['wonder'],
                               date: document['date'],
-                              isvalidate: document['isvalidate'],
-                              isload: document['isload'],
+                              isvalidate: document['is_validate'],
+                              isload: document['is_load'],
                               motif: document['motif']);
                           return FavorisWidget(
                             reservation: reservation,

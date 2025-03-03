@@ -20,6 +20,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:latlong2/latlong.dart' as latLng;
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ListeVue extends StatefulWidget {
   const ListeVue({super.key});
@@ -31,59 +32,32 @@ class ListeVue extends StatefulWidget {
 
 class _ListeVueState extends State<ListeVue> {
   bool _visible = false;
-  int _currentPage = 0;
   int select_cat = 0;
-  String categorie_to_go = 'Nature';
+  String categorie_to_go = 'Pour moi';
   int id_select_cat = 0;
   bool isLoading = false;
   final PageController _offreController = PageController();
   Timer? _timer;
-  int _nombreOffres = 0;
   List<Wonder> wonders = [];
-  Stream<List<Map<String, dynamic>>>? _offresStream;
-
-
+  Stream<List<Map<String, dynamic>>>? _categorieStream;
 
   @override
   void initState() {
     super.initState();
-    if (mounted) {
-      _verifyConnection();
-      _getNumberOfOffers();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _visible = true;
-        });
-      });
-      loadData();
-      _startAutoScroll();
-    }
-
+    _verifyConnection();
+    _startAutoScroll();
+    fetchCategories();
   }
 
-  Future<void> loadData() async {
+  void fetchCategories() async {
+    _categorieStream = await Supabase.instance.client
+        .from('categorie')
+        .stream(primaryKey: ['id'])
+        .order('id', ascending: true);
     setState(() {
-      _offresStream = Supabase.instance.client
-          .from('offre')
-          .stream(primaryKey: ['id']);
+      _visible = true;
     });
-
   }
-
-  Future<List<Map<String, dynamic>>> fetchCategories() async {
-    final response = await Supabase.instance.client.from('categorie').select();
-    return response;
-  }
-
-  Future<List<Map<String, dynamic>>> fetchWonderPopulaire() async {
-    final response = await Supabase.instance.client
-        .from('wonder')
-        .select()
-        .order('note', ascending: false)
-        .limit(5);
-    return response;
-  }
-
 
   void _verifyConnection() async {
     if (await Logique.checkInternetConnection()) {
@@ -95,32 +69,11 @@ class _ListeVueState extends State<ListeVue> {
     }
   }
 
-  Future<void> _getNumberOfOffers() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('offre') // Remplacez 'offres' par le nom de votre table
-          .select('id'); // Compter les offres
-
-      setState(() {
-        _nombreOffres = response.length ?? 0; // Utilisez response.count pour obtenir le nombre d'offres
-      });
-    } catch (e) {
-      print('Erreur lors de la récupération du nombre d\'offres : $e');
-      setState(() {
-        _nombreOffres = 0; // En cas d'erreur, définir _nombreOffres à 0
-      });
-    }
-  }
-
   void _startAutoScroll() {
-    _timer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
-      if (_currentPage < _nombreOffres - 1) {
-        _currentPage++;
-      } else {
-        _currentPage = 0;
-      }
+    _timer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
+      Provider.of<OfferProvider>(context, listen: false).incrementPage();
       _offreController.animateToPage(
-        _currentPage,
+        Provider.of<OfferProvider>(context, listen: false).currentPage,
         duration: const Duration(milliseconds: 800),
         curve: Curves.easeIn,
       );
@@ -151,6 +104,7 @@ class _ListeVueState extends State<ListeVue> {
     final double width = size.width;
     final userProvider = Provider.of<UserProvider>(context);
     final wonderProvider = Provider.of<WondersProvider>(context);
+    final offerProvider = Provider.of<OfferProvider>(context);
     return SingleChildScrollView(
       child: SizedBox(
         child: Column(
@@ -178,11 +132,10 @@ class _ListeVueState extends State<ListeVue> {
                 ],
               ),
             ),
-
             SizedBox(
               height: 200,
               child: StreamBuilder<List<Map<String, dynamic>>>(
-                stream: _offresStream,
+                stream: offerProvider.offresStream,
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return const Center(
@@ -192,10 +145,7 @@ class _ListeVueState extends State<ListeVue> {
                   }
 
                   if (!snapshot.hasData) {
-                    return const Center(
-                      child: Text(
-                          "Aucune donnée truové"),
-                    );
+                    return const Center();
                   }
 
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -209,14 +159,11 @@ class _ListeVueState extends State<ListeVue> {
                       itemCount: snapshot.data!.length,
                       controller: _offreController,
                       onPageChanged: (int page) {
-                        setState(() {
-                          if (mounted) {
-                            _currentPage = page;
-                          }
-                        });
+                        offerProvider.setCurrentPage(page);
                       },
                       itemBuilder: (context, index) {
-                        final Map<String, dynamic> document = snapshot.data![index];
+                        final Map<String, dynamic> document =
+                            snapshot.data![index];
                         return GestureDetector(
                           onPanDown: (details) {
                             _stopAutoScroll();
@@ -258,7 +205,8 @@ class _ListeVueState extends State<ListeVue> {
                                     height: 200,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(15),
-                                      color: Colors.black.withValues(alpha:0.5),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.5),
                                     ),
                                   ),
                                   Padding(
@@ -292,41 +240,69 @@ class _ListeVueState extends State<ListeVue> {
                                         Container(
                                           margin:
                                               const EdgeInsets.only(top: 15),
-
                                           decoration: BoxDecoration(
                                               color: Colors.white,
                                               borderRadius:
                                                   BorderRadius.circular(20)),
                                           child: TextButton(
-                                            onPressed: (){
-                                              showDialog(context: context, builder: (BuildContext context){
-                                                return AlertDialog(
-                                                  title: const Center(child: Icon(LucideIcons.externalLink, size: 50,)),
-                                                  content: const Text("Vous allez être redirigé vers un site externe pour voir les details de l'offre"),
-                                                  actions: [
-                                                    TextButton(
-                                                        onPressed: (){
-                                                          Navigator.pop(context);
-                                                        }, child: const Text("D'accord")
-                                                    ),
-
-                                                    TextButton(
-                                                        onPressed: (){
-                                                          Navigator.pop(context);
-                                                        }, child: const Text("Retour", style: TextStyle(color: Colors.red),)
-                                                    ),
-                                                  ],
-                                                );
-                                              }
-
-                                              );
+                                            onPressed: () {
+                                              showDialog(
+                                                  context: context,
+                                                  builder:
+                                                      (BuildContext context) {
+                                                    return AlertDialog(
+                                                      title: const Center(
+                                                          child: Icon(
+                                                        LucideIcons
+                                                            .externalLink,
+                                                        size: 50,
+                                                      )),
+                                                      content: const Text(
+                                                          "Vous allez être redirigé vers un site externe pour voir les details de l'offre"),
+                                                      actions: [
+                                                        TextButton(
+                                                            onPressed:
+                                                                () async {
+                                                              Navigator.pop(
+                                                                  context);
+                                                              final Uri url =
+                                                                  Uri.parse(
+                                                                      document[
+                                                                          'link']);
+                                                              if (await canLaunchUrl(
+                                                                  url)) {
+                                                                await launchUrl(
+                                                                    url);
+                                                              } else {
+                                                                throw "Impossible d'ouvrir le lien";
+                                                              }
+                                                            },
+                                                            child: const Text(
+                                                                "D'accord")),
+                                                        TextButton(
+                                                            onPressed: () {
+                                                              Navigator.pop(
+                                                                  context);
+                                                            },
+                                                            child: const Text(
+                                                              "Retour",
+                                                              style: TextStyle(
+                                                                  color: Colors
+                                                                      .red),
+                                                            )),
+                                                      ],
+                                                    );
+                                                  });
                                             },
-                                            child: Text(document['text_link'],
+                                            child: Text(
+                                              document['text_link'],
                                               style: GoogleFonts.jura(
                                                   textStyle: const TextStyle(
                                                       fontSize: 13,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: ListeVue.verte)),),
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: ListeVue.verte)),
+                                            ),
                                           ),
                                         )
                                       ],
@@ -341,12 +317,9 @@ class _ListeVueState extends State<ListeVue> {
                 },
               ),
             ),
-
             StoriesList(),
-            //Storie(path: wonders[1].imagePath),
-
             Container(
-              padding: const EdgeInsets.only(left: 20, top: 15),
+              padding: const EdgeInsets.only(left: 20, top: 5),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
@@ -367,54 +340,99 @@ class _ListeVueState extends State<ListeVue> {
                 ],
               ),
             ),
-
             Container(
               height: 40,
-              margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
+              margin: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   Expanded(
-                    child: FutureBuilder<List<Map<String, dynamic>>>(
-                      future: fetchCategories(), // Fonction pour récupérer les catégories depuis Supabase
+                    child: StreamBuilder<List<Map<String, dynamic>>>(
+                      stream:
+                          _categorieStream, // Fonction pour récupérer les catégories depuis Supabase
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
                         } else if (snapshot.hasError) {
-                          return Center(child: Text('Erreur : ${snapshot.error}'));
-                        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Center(child: Text('Aucune catégorie trouvée.'));
+                          return Center(child: Text('Erreur'));
+                        } else if (!snapshot.hasData ||
+                            snapshot.data!.isEmpty) {
+                          return const Center(
+                              child: Text('Aucune catégorie trouvée.'));
                         } else {
                           final categories = snapshot.data!;
 
                           return ListView.builder(
                             shrinkWrap: true,
                             scrollDirection: Axis.horizontal,
-                            itemCount: categories.length,
+                            itemCount: categories.length + 1,
                             itemBuilder: (BuildContext context, int index) {
-                              final category = categories[index];
+
+                              if(index == 0) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    wonderProvider
+                                        .loadCategorieVue(0);
+                                    setState(() {
+                                      select_cat = 0;
+                                      categorie_to_go = 'Pour moi';
+                                      id_select_cat = 0;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(
+                                        milliseconds: 1000), // Durée de l'animation
+                                    curve: Curves.easeOut, // Type de courbe d'animation
+                                    transform: Matrix4.translationValues(
+                                        0, _visible ? 0 : 50, 0), // Déplacement vers le bas
+                                    child: catButton(
+                                      select_cat: select_cat,
+                                      rang: 0,
+                                      width: MediaQuery.of(context).size.width,
+                                      verte: ListeVue.verte,
+                                      cat: Categorie(
+                                        id: 0,
+                                        designation: 'Pour moi',
+                                        statut: true,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+
+
+                              final category = categories[index - 1];
                               return GestureDetector(
                                 onTap: () {
                                   if (category['statut'] as bool) {
+                                    wonderProvider
+                                        .loadCategorieVue(category['id']);
                                     setState(() {
                                       select_cat = index;
                                       categorie_to_go = category['designation'];
                                       id_select_cat = category['id'];
                                     });
+
+                                    print(categorie_to_go);
+                                    print(id_select_cat);
                                   } else {
                                     showDialog(
                                       context: context,
                                       builder: (BuildContext context) {
                                         return AlertDialog(
                                           title: const Icon(
-                                            Icons.warning, // Remplacez par l'icône souhaitée
+                                            Icons
+                                                .warning, // Remplacez par l'icône souhaitée
                                             size: 50,
                                             color: Colors.orange,
                                           ),
                                           content: Text(
                                             "Catégorie bientôt disponible",
                                             style: GoogleFonts.lalezar(
-                                              textStyle: const TextStyle(fontSize: 20),
+                                              textStyle:
+                                                  const TextStyle(fontSize: 20),
                                             ),
                                           ),
                                         );
@@ -423,8 +441,11 @@ class _ListeVueState extends State<ListeVue> {
                                   }
                                 },
                                 child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 1000), // Durée de l'animation
-                                  curve: Curves.easeOut, // Type de courbe d'animation
+                                  duration: const Duration(
+                                      milliseconds:
+                                          1000), // Durée de l'animation
+                                  curve: Curves
+                                      .easeOut, // Type de courbe d'animation
                                   transform: Matrix4.translationValues(
                                       0,
                                       _visible ? 0 : 50,
@@ -436,7 +457,8 @@ class _ListeVueState extends State<ListeVue> {
                                     verte: ListeVue.verte,
                                     cat: Categorie(
                                       id: category['id'] as int,
-                                      designation: category['designation'] as String,
+                                      designation:
+                                          category['designation'] as String,
                                       statut: category['statut'] as bool,
                                     ),
                                   ),
@@ -451,16 +473,15 @@ class _ListeVueState extends State<ListeVue> {
                 ],
               ),
             ),
-
             StreamBuilder<List<Map<String, dynamic>>>(
-              stream: wonderProvider.wondersStream,
-              builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
+              stream: wonderProvider.wondersStreamVue,
+              builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: const Text('Quelques choses na pas donné'));
+                  return const Center(
+                      child: Text('Quelques choses na pas donné'));
                 }
 
-                if (snapshot.connectionState ==
-                    ConnectionState.waiting) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return SingleChildScrollView(
                     child: Column(
                       children: [
@@ -474,20 +495,19 @@ class _ListeVueState extends State<ListeVue> {
                 if (snapshot.data!.isEmpty) {
                   return Center(
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            height: size.height / 10,
-                            margin: const EdgeInsets.all(10),
-                            padding: const EdgeInsets.all(30),
-                            child: Theme.of(context).brightness ==
-                                Brightness.light
-                                ? Image.asset('assets/vide_light.png')
-                                : Image.asset('assets/vide_dark.png'),
-                          ),
-                          const Text("Vide, aucun element !")
-                        ],
-                      ));
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        height: size.height / 10,
+                        margin: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(30),
+                        child: Theme.of(context).brightness == Brightness.light
+                            ? Image.asset('assets/vide_light.png')
+                            : Image.asset('assets/vide_dark.png'),
+                      ),
+                      const Text("Vide, aucun element !")
+                    ],
+                  ));
                 }
 
                 return ListView.builder(
@@ -495,7 +515,8 @@ class _ListeVueState extends State<ListeVue> {
                     shrinkWrap: true,
                     itemCount: snapshot.data!.length,
                     itemBuilder: (BuildContext context, int index) {
-                      final Map<String, dynamic> document = snapshot.data![index];
+                      final Map<String, dynamic> document =
+                          snapshot.data![index];
                       final Wonder wond = Wonder(
                           idWonder: document['id'],
                           wonderName: document['wonder_name'],
@@ -516,15 +537,15 @@ class _ListeVueState extends State<ListeVue> {
                           is_premium: document['is_premium']);
                       return GestureDetector(
                         onTap: () {
-                          if(userProvider.isPremium || wond.free){
+                          if (userProvider.isPremium || wond.is_premium) {
                             Navigator.push(
                               context,
                               PageRouteBuilder(
                                   pageBuilder: (context, animation,
-                                      secondaryAnimation) =>
+                                          secondaryAnimation) =>
                                       WonderPage(wond: wond),
                                   transitionDuration:
-                                  const Duration(milliseconds: 500),
+                                      const Duration(milliseconds: 500),
                                   transitionsBuilder: (context, animation,
                                       secondaryAnimation, child) {
                                     animation = CurvedAnimation(
@@ -536,55 +557,67 @@ class _ListeVueState extends State<ListeVue> {
                                     );
                                   }),
                             );
-                          }else{
-                            Navigator.push(context,
-                                MaterialPageRoute(builder: (context) => SubscriptionPage()));
+                          } else {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => SubscriptionPage()));
                           }
                         },
                         child: isLoading
                             ? shimmerWonder(
-                          width: size.width,
-                        )
-                            : WonderWidget(
-                            size: size, wonderscat: wond),
+                                width: size.width,
+                              )
+                            : WonderWidget(size: size, wonderscat: wond),
                       );
                     });
               },
             ),
-
             Container(
               padding: const EdgeInsets.all(20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
-                      onPressed: (){
+                      onPressed: () {
                         wonderProvider.loadCategorie(id_select_cat);
+                        print(id_select_cat);
                         Navigator.push(
                             context,
                             PageRouteBuilder(
-                                pageBuilder: (_, __, ___) => PageCategorie(cat: categorie_to_go, id_categorie: id_select_cat,),
+                                pageBuilder: (_, __, ___) => PageCategorie(
+                                      cat: categorie_to_go,
+                                      id_categorie: id_select_cat,
+                                    ),
                                 transitionsBuilder: (_, animation, __, child) {
                                   return SlideTransition(
                                     position: Tween<Offset>(
-                                        begin: const Offset(-1.0, 0.0), end: Offset.zero)
+                                            begin: const Offset(-1.0, 0.0),
+                                            end: Offset.zero)
                                         .animate(CurvedAnimation(
-                                        parent: animation,
-                                        curve: Curves.easeInOut,
-                                        reverseCurve: Curves.easeInOutBack)),
+                                            parent: animation,
+                                            curve: Curves.easeInOut,
+                                            reverseCurve:
+                                                Curves.easeInOutBack)),
                                     child: child,
                                   );
                                 },
-                                transitionDuration: const Duration(milliseconds: 700)));
+                                transitionDuration:
+                                    const Duration(milliseconds: 700)));
                       },
                       child: const Row(
                         children: [
-                          Text('Tout voir', style: TextStyle(decoration: TextDecoration.underline),),
-                          SizedBox(width: 10,),
+                          Text(
+                            'Tout voir',
+                            style:
+                                TextStyle(decoration: TextDecoration.underline),
+                          ),
+                          SizedBox(
+                            width: 10,
+                          ),
                           Icon(Icons.arrow_forward_ios),
                         ],
-                      )
-                  )
+                      ))
                 ],
               ),
             ),
@@ -596,11 +629,13 @@ class _ListeVueState extends State<ListeVue> {
 }
 
 class catButton extends StatelessWidget {
-  const catButton({
+  catButton({
     super.key,
     required this.width,
     required this.verte,
-    required this.cat, required this.select_cat, required this.rang,
+    required this.cat,
+    required this.select_cat,
+    required this.rang,
   });
 
   final double width;
@@ -609,31 +644,63 @@ class catButton extends StatelessWidget {
   final int select_cat;
   final int rang;
 
+  final Map<String, IconData> iconMap = {
+    'Nature': LucideIcons.leaf,
+    'Culture': LucideIcons.landmark,
+    'Gastronomie': LucideIcons.utensils,
+    'Hotels': LucideIcons.bed,
+    'Sport': LucideIcons.bike,
+    'Pour moi': LucideIcons.fingerprint,
+    'autre': LucideIcons.smilePlus,
+    // Ajoute d'autres icônes selon tes besoins
+  };
+
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         Container(
-            width: width * 15 / 40,
-            height: 35,
             margin: const EdgeInsets.only(right: 10),
+            padding: EdgeInsets.fromLTRB(20, 10, 20, 10),
             decoration: BoxDecoration(
-              color: cat.statut ? rang == select_cat ? verte : Theme.of(context).brightness ==
-                  Brightness.light ? Colors.white : Colors.transparent : Theme.of(context).brightness ==
-                  Brightness.light ? Colors.grey.shade100 : Colors.transparent,
-                borderRadius: BorderRadius.circular(200),
+                color: cat.statut
+                    ? rang == select_cat
+                        ? verte
+                        : Theme.of(context).brightness == Brightness.light
+                            ? Colors.white
+                            : Colors.transparent
+                    : Theme.of(context).brightness == Brightness.light
+                        ? Colors.grey.shade100
+                        : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: cat.statut ? Colors.grey.withValues(alpha:0.5) : Colors.grey.withValues(alpha:0))),
+                    color: cat.statut
+                        ? Colors.grey.withValues(alpha: 0.5)
+                        : Colors.grey.withValues(alpha: 0))),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                //Icon(, size: 55, color: verte,),
-
+                Icon(
+                  iconMap[cat.designation] ?? LucideIcons.helpCircle,
+                  size: 16,
+                  color: rang == select_cat
+                      ? Colors.white
+                      : verte,
+                ),
+                const SizedBox(
+                  width: 5,
+                ),
                 Text(
                   cat.designation,
                   style: GoogleFonts.jura(
-                      color: cat.statut ? rang == select_cat ? Colors.white : Theme.of(context).brightness ==
-                          Brightness.light ? Colors.black : Colors.white : Colors.grey,
+                      fontWeight: FontWeight.bold,
+                      color: cat.statut
+                          ? rang == select_cat
+                              ? Colors.white
+                              : Theme.of(context).brightness == Brightness.light
+                                  ? Colors.black
+                                  : Colors.white
+                          : Colors.grey,
                       textStyle: const TextStyle(
                           fontSize: 11, fontWeight: FontWeight.bold)),
                 )
@@ -645,8 +712,7 @@ class catButton extends StatelessWidget {
 }
 
 class StoriesList extends StatefulWidget {
-  const StoriesList({super.key});
-
+  StoriesList({super.key});
   static const verte = Color(0xff226900);
 
   @override
@@ -656,13 +722,26 @@ class StoriesList extends StatefulWidget {
 class _StoriesListState extends State<StoriesList> {
   final ScrollController _controller = ScrollController();
   final double _height = 200.0;
+  Stream<List<Map<String, dynamic>>>? _storieStream;
 
   bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    loadData();
+    fetchWonderPopulaire();
+    //loadData();
+  }
+
+  void fetchWonderPopulaire() async {
+    _storieStream = await Supabase.instance.client
+        .from('wonder')
+        .stream(primaryKey: ['id'])
+        .order('note', ascending: false)
+        .limit(5);
+    setState(() {
+      isLoading = false;
+    });
   }
 
   Future loadData() async {
@@ -682,7 +761,6 @@ class _StoriesListState extends State<StoriesList> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
@@ -690,7 +768,7 @@ class _StoriesListState extends State<StoriesList> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.only(left: 20, bottom: 8),
+          padding: const EdgeInsets.only(left: 20, bottom: 5),
           child: Row(
             children: [
               const Icon(
@@ -714,98 +792,117 @@ class _StoriesListState extends State<StoriesList> {
           margin: const EdgeInsets.only(left: 15),
           child: SizedBox(
               height: _height,
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: _ListeVueState().fetchWonderPopulaire(),
-                  builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
-                    if (snapshot.hasError) {
-                      return const Text('Something went wrong');
-                    }
-
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            shimmerStorie(),
-                            shimmerStorie(),
-                            shimmerStorie()
-                          ],
-                        ),
-                      );
-                    }
-
-                    if (snapshot.data!.isEmpty) {
-                      return Center(
-                          child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+              child: isLoading
+                  ? const SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
                         children: [
-                          Container(
-                            height: size.height / 10,
-                            margin: const EdgeInsets.all(10),
-                            child:
-                                Theme.of(context).brightness == Brightness.light
+                          shimmerStorie(),
+                          shimmerStorie(),
+                          shimmerStorie()
+                        ],
+                      ),
+                    )
+                  : StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: _storieStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return const Text('Something went wrong');
+                        }
+
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                shimmerStorie(),
+                                shimmerStorie(),
+                                shimmerStorie()
+                              ],
+                            ),
+                          );
+                        }
+
+                        if (!snapshot.hasData) {
+                          return Center(
+                              child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                height: size.height / 10,
+                                margin: const EdgeInsets.all(10),
+                                child: Theme.of(context).brightness ==
+                                        Brightness.light
                                     ? Image.asset('assets/vide_light.png')
                                     : Image.asset('assets/vide_dark.png'),
-                          ),
-                          const Text(
-                              "Vide pour le moment, bientot disponible !")
-                        ],
-                      ));
-                    }
-                    return ListView.builder(
-                        controller: _controller,
-                        shrinkWrap: true,
-                        scrollDirection: Axis.horizontal,
-                        itemCount: snapshot.data!.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final Map<String, dynamic> document = snapshot.data![index];
-                          final Wonder wond = Wonder(
-                            idWonder: document['id'],
-                            wonderName: document['wonder_name'],
-                            description: document['description'],
-                            imagePath: document['image_path'],
-                            city: document['city'],
-                            region: document['region'],
-                            free: document['free'],
-                            price: document['price'],
-                            horaire: document['horaire'],
-                            latitude: document['latitude'],
-                            longitude: document['longitude'],
-                            note: (document['note'] as num).toDouble(),
-                            categorie: document['categorie'],
-                            isreservable: document['is_reservable'],
-                            acces: document['acces'],
-                            description_acces: document['description_acces'],
-                            is_premium: document['is_premium']
-                          );
-                          return GestureDetector(
-                            onTap: () {
-
-                              (userProvider.isPremium || wond.free) ? Navigator.push(
-                                  context,
-                                  PageRouteBuilder(
-                                    pageBuilder: (context, animation,
-                                            secondaryAnimation) =>
-                                        Sttories(wond: wond),
-                                    transitionsBuilder: (context, animation,
-                                        secondaryAnimation, child) {
-                                      animation = CurvedAnimation(
-                                          parent: animation,
-                                          curve: Curves.easeIn);
-                                      return FadeTransition(
-                                        opacity: animation,
-                                        child: child,
-                                      );
-                                    },
-                                  )) : Navigator.push(context,
-                                  MaterialPageRoute(builder: (context) => SubscriptionPage()));
-                            },
-                            child: isLoading
-                                ? const shimmerStorie()
-                                : Storie(wond: wond),
-                          );
-                        });
-                  })),
+                              ),
+                              const Text(
+                                  "Vide pour le moment, bientot disponible !")
+                            ],
+                          ));
+                        }
+                        return ListView.builder(
+                            controller: _controller,
+                            shrinkWrap: true,
+                            scrollDirection: Axis.horizontal,
+                            itemCount: snapshot.data!.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              final Map<String, dynamic> document =
+                                  snapshot.data![index];
+                              final Wonder wond = Wonder(
+                                  idWonder: document['id'],
+                                  wonderName: document['wonder_name'],
+                                  description: document['description'],
+                                  imagePath: document['image_path'],
+                                  city: document['city'],
+                                  region: document['region'],
+                                  free: document['free'],
+                                  price: document['price'],
+                                  horaire: document['horaire'],
+                                  latitude: document['latitude'],
+                                  longitude: document['longitude'],
+                                  note: (document['note'] as num).toDouble(),
+                                  categorie: document['categorie'],
+                                  isreservable: document['is_reservable'],
+                                  acces: document['acces'],
+                                  description_acces:
+                                      document['description_acces'],
+                                  is_premium: document['is_premium']);
+                              return GestureDetector(
+                                onTap: () {
+                                  (userProvider.isPremium || wond.is_premium)
+                                      ? Navigator.push(
+                                          context,
+                                          PageRouteBuilder(
+                                            pageBuilder: (context, animation,
+                                                    secondaryAnimation) =>
+                                                Sttories(wond: wond),
+                                            transitionsBuilder: (context,
+                                                animation,
+                                                secondaryAnimation,
+                                                child) {
+                                              animation = CurvedAnimation(
+                                                  parent: animation,
+                                                  curve: Curves.easeIn);
+                                              return FadeTransition(
+                                                opacity: animation,
+                                                child: child,
+                                              );
+                                            },
+                                          ))
+                                      : Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (context) =>
+                                                  SubscriptionPage()));
+                                },
+                                child: isLoading
+                                    ? const shimmerStorie()
+                                    : Storie(wond: wond),
+                              );
+                            });
+                      })),
         ),
       ],
     );
@@ -883,18 +980,18 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
                 ),
               ),
             ),
-            (userProvider.isPremium || wond.free)
-                ? const SizedBox()  // Un widget vide au lieu d'un Center inutile
+            (userProvider.isPremium || wond.is_premium)
+                ? const SizedBox() // Un widget vide au lieu d'un Center inutile
                 : Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: Colors.black.withValues(alpha:0.6),
-              ),
-              height: 200,
-              width: 140,
-
-              child: const Icon(Icons.lock, size: 70, color: Colors.white),
-            ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.black.withValues(alpha: 0.6),
+                    ),
+                    height: 200,
+                    width: 140,
+                    child:
+                        const Icon(Icons.lock, size: 70, color: Colors.white),
+                  ),
             Container(
                 margin: const EdgeInsets.all(5),
                 padding: const EdgeInsets.all(8),
@@ -905,8 +1002,10 @@ class _StorieState extends State<Storie> with SingleTickerProviderStateMixin {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        const Color.fromARGB(255, 0, 0, 0).withValues(alpha:0.8),
-                        const Color.fromARGB(255, 0, 0, 0).withValues(alpha:0.0),
+                        const Color.fromARGB(255, 0, 0, 0)
+                            .withValues(alpha: 0.8),
+                        const Color.fromARGB(255, 0, 0, 0)
+                            .withValues(alpha: 0.0),
                       ]),
                 ),
                 child: Column(
@@ -1053,7 +1152,6 @@ class maps extends StatefulWidget {
 class _mapsState extends State<maps> {
   final SupabaseClient supabase = Supabase.instance.client;
 
-
   @override
   Widget build(BuildContext context) {
     return FlutterMap(
@@ -1069,9 +1167,9 @@ class _mapsState extends State<maps> {
           markers: [],
         ),
         FutureBuilder<List<Map<String, dynamic>>>(
-          future: supabase.from('wonders').select(),
-          builder:
-              (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
+          future: supabase.from('wonder').select(),
+          builder: (BuildContext context,
+              AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
                 child: CircularProgressIndicator(
@@ -1114,8 +1212,7 @@ class _mapsState extends State<maps> {
                         description_acces: document['description_acces'],
                         is_premium: document['is_premium']);
                     return Marker(
-                      point: latLng.LatLng(wond.latitude,
-                          wond.longitude),
+                      point: latLng.LatLng(wond.latitude, wond.longitude),
                       child: WonderMarker(wonder: wond),
                     );
                   }).toList(),
@@ -1161,219 +1258,241 @@ class WonderMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-    return GestureDetector(
-      onTap: () {
-        showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                contentPadding: EdgeInsets.zero,
-                content: Container(
-                  height: 170,
-                  width: MediaQuery.of(context).size.width,
-                  decoration:
-                      BoxDecoration(borderRadius: BorderRadius.circular(15)),
-                  child: Row(
-                    children: [
-                      Stack(
-                        children: [
-                          SizedBox(
-                            height: 170,
-                            width: 120,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
-                              child: CachedNetworkImage(
-                                cacheManager: CustomCacheManager(),
-                                imageUrl: wonder.imagePath,
-                                placeholder: (context, url) => const Center(
-                                    child: shimmerOffre(width: 120, height: 170)),
-                                errorWidget: (context, url, error) =>
-                                    const Center(child: Icon(Icons.error)),
-                                fit: BoxFit.cover,
+    return Container(
+      width: 100, // Largeur du marqueur
+      height: 100, // Hauteur du marqueur
+      child: GestureDetector(
+        onTap: () {
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  contentPadding: EdgeInsets.zero,
+                  content: Container(
+                    height: 170,
+                    width: MediaQuery.of(context).size.width,
+                    decoration:
+                        BoxDecoration(borderRadius: BorderRadius.circular(15)),
+                    child: Row(
+                      children: [
+                        Stack(
+                          children: [
+                            SizedBox(
+                              height: 170,
+                              width: 120,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(15),
+                                child: CachedNetworkImage(
+                                  cacheManager: CustomCacheManager(),
+                                  imageUrl: wonder.imagePath,
+                                  placeholder: (context, url) => const Center(
+                                      child: shimmerOffre(
+                                          width: 120, height: 170)),
+                                  errorWidget: (context, url, error) =>
+                                      const Center(child: Icon(Icons.error)),
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
-                          ),
+                            (userProvider.isPremium || wonder.is_premium)
+                                ? const SizedBox() // Un widget vide au lieu d'un Center inutile
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(15),
+                                      color:
+                                          Colors.black.withValues(alpha: 0.6),
+                                    ),
+                                    height: 170,
+                                    width: 120,
+                                    child: const Icon(Icons.lock,
+                                        size: 100, color: Colors.white),
+                                  ),
+                          ],
+                        ),
 
-                          (userProvider.isPremium || wonder.free)
-                              ? const SizedBox()  // Un widget vide au lieu d'un Center inutile
-                              : Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              color: Colors.black.withValues(alpha:0.6),
-                            ),
-                            height: 170,
-                            width: 120,
+                        //SizedBox(width: 10,),
 
-                            child: const Icon(Icons.lock, size: 100, color: Colors.white),
-                          ),
-                        ],
-                      ),
-
-                      //SizedBox(width: 10,),
-
-                      Container(
-                        padding: const EdgeInsets.all(15),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Text(
-                              truncate(wonder.wonderName),
-                              style: GoogleFonts.lalezar(
-                                  textStyle: const TextStyle(
-                                      fontSize: 16, color: Color(0xff226900))),
-                            ),
-                            Row(
-                              children: [
-                                Row(
-                                  children: [
-                                    Row(
-                                      children: List.generate(
-                                        wonder.note.floor(),
-                                        (index) => const Icon(
-                                          Icons.star_rounded,
+                        Container(
+                          padding: const EdgeInsets.all(15),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Text(
+                                truncate(wonder.wonderName),
+                                style: GoogleFonts.lalezar(
+                                    textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        color: Color(0xff226900))),
+                              ),
+                              Row(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Row(
+                                        children: List.generate(
+                                          wonder.note.floor(),
+                                          (index) => const Icon(
+                                            Icons.star_rounded,
+                                            color: Colors.orange,
+                                            size: 15,
+                                          ),
+                                        ),
+                                      ),
+                                      // Demi-étoile si nécessaire
+                                      if (wonder.note - wonder.note.floor() !=
+                                              1 &&
+                                          wonder.note - wonder.note.floor() !=
+                                              0)
+                                        const Icon(
+                                          Icons.star_half_rounded,
                                           color: Colors.orange,
                                           size: 15,
                                         ),
-                                      ),
-                                    ),
-                                    // Demi-étoile si nécessaire
-                                    if (wonder.note - wonder.note.floor() !=
-                                            1 &&
-                                        wonder.note - wonder.note.floor() != 0)
-                                      const Icon(
-                                        Icons.star_half_rounded,
-                                        color: Colors.orange,
-                                        size: 15,
-                                      ),
-                                    // Étoiles vides
-                                    if (wonder.note.floor() != 5 &&
-                                        wonder.note - wonder.note.floor() == 0)
-                                      Row(
-                                        children: List.generate(
-                                          5 - wonder.note.floor(),
-                                          (index) => const Icon(
-                                            Icons.star_border_rounded,
-                                            color: Colors.orange,
-                                            size: 15,
+                                      // Étoiles vides
+                                      if (wonder.note.floor() != 5 &&
+                                          wonder.note - wonder.note.floor() ==
+                                              0)
+                                        Row(
+                                          children: List.generate(
+                                            5 - wonder.note.floor(),
+                                            (index) => const Icon(
+                                              Icons.star_border_rounded,
+                                              color: Colors.orange,
+                                              size: 15,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    if (wonder.note.floor() != 5 &&
-                                        wonder.note - wonder.note.floor() !=
-                                            1 &&
-                                        wonder.note - wonder.note.floor() != 0)
-                                      Row(
-                                        children: List.generate(
-                                          4 - wonder.note.floor(),
-                                          (index) => const Icon(
-                                            Icons.star_border_rounded,
-                                            color: Colors.orange,
-                                            size: 15,
+                                      if (wonder.note.floor() != 5 &&
+                                          wonder.note - wonder.note.floor() !=
+                                              1 &&
+                                          wonder.note - wonder.note.floor() !=
+                                              0)
+                                        Row(
+                                          children: List.generate(
+                                            4 - wonder.note.floor(),
+                                            (index) => const Icon(
+                                              Icons.star_border_rounded,
+                                              color: Colors.orange,
+                                              size: 15,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    if (wonder.note.floor() == 5 &&
-                                        wonder.note - wonder.note.floor() !=
-                                            1 &&
-                                        wonder.note - wonder.note.floor() != 0)
-                                      Row(
-                                        children: List.generate(
-                                          4 - wonder.note.floor(),
-                                          (index) => const Icon(
-                                            Icons.star_border_rounded,
-                                            color: Colors.orange,
-                                            size: 15,
+                                      if (wonder.note.floor() == 5 &&
+                                          wonder.note - wonder.note.floor() !=
+                                              1 &&
+                                          wonder.note - wonder.note.floor() !=
+                                              0)
+                                        Row(
+                                          children: List.generate(
+                                            4 - wonder.note.floor(),
+                                            (index) => const Icon(
+                                              Icons.star_border_rounded,
+                                              color: Colors.orange,
+                                              size: 15,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                  ],
-                                ),
-                                Container(
-                                  margin: const EdgeInsets.only(
-                                      left: 10, right: 10),
-                                  width: 2,
-                                  height: 20,
-                                  color: const Color(0xff226900),
-                                ),
-                                Text(
-                                  wonder.note.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                )
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Text(
-                                  truncate(wonder.region),
-                                  style: GoogleFonts.jura(
-                                      textStyle: const TextStyle(fontSize: 12)),
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Container(
-                                  height: 15,
-                                  width: 1,
-                                  color: Colors.grey,
-                                ),
-                                const SizedBox(
-                                  width: 5,
-                                ),
-                                Text(
-                                  truncate(wonder.city),
-                                  style: GoogleFonts.jura(
-                                      textStyle: const TextStyle(fontSize: 12)),
-                                ),
-                              ],
-                            ),
-                            SizedBox(
-                                width: 150,
-                                child: Text(
-                                  "Ce lieu se situe dans la région de ${wonder.region}",
-                                  style: GoogleFonts.jura(
-                                      textStyle: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold)),
-                                )),
-                            SizedBox(
-                              height: 30,
-                              child: ElevatedButton(
-                                  onPressed: () {
-                                    if(userProvider.isPremium || wonder.free){
-                                      Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (BuildContext context) =>
-                                                  WonderPage(wond: wonder)));
-                                    }else{
-                                      Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                              builder: (BuildContext context) =>
-                                                  SubscriptionPage()));
-                                    }
-                                  },
-                                  child: const Text("Découvrir")),
-                            )
-                          ],
-                        ),
-                      )
-                    ],
+                                    ],
+                                  ),
+                                  Container(
+                                    margin: const EdgeInsets.only(
+                                        left: 10, right: 10),
+                                    width: 2,
+                                    height: 20,
+                                    color: const Color(0xff226900),
+                                  ),
+                                  Text(
+                                    wonder.note.toStringAsFixed(1),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  )
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Text(
+                                    truncate(wonder.region),
+                                    style: GoogleFonts.jura(
+                                        textStyle:
+                                            const TextStyle(fontSize: 12)),
+                                  ),
+                                  const SizedBox(
+                                    width: 5,
+                                  ),
+                                  Container(
+                                    height: 15,
+                                    width: 1,
+                                    color: Colors.grey,
+                                  ),
+                                  const SizedBox(
+                                    width: 5,
+                                  ),
+                                  Text(
+                                    truncate(wonder.city),
+                                    style: GoogleFonts.jura(
+                                        textStyle:
+                                            const TextStyle(fontSize: 12)),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(
+                                  width: 150,
+                                  child: Text(
+                                    "Ce lieu se situe dans la région de ${wonder.region}",
+                                    style: GoogleFonts.jura(
+                                        textStyle: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold)),
+                                  )),
+                              SizedBox(
+                                height: 30,
+                                child: ElevatedButton(
+                                    onPressed: () {
+                                      if (userProvider.isPremium ||
+                                          wonder.is_premium) {
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (BuildContext
+                                                        context) =>
+                                                    WonderPage(wond: wonder)));
+                                      } else {
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder:
+                                                    (BuildContext context) =>
+                                                        SubscriptionPage()));
+                                      }
+                                    },
+                                    child: const Text("Découvrir")),
+                              )
+                            ],
+                          ),
+                        )
+                      ],
+                    ),
                   ),
-                ),
-              );
-            });
-      },
-      child: Container(
-        child: wonder.categorie == "Wonders nature"
-            ? Image.asset("assets/locationNature.png")
-            : wonder.categorie == "Wonders patrimoine"
-                ? Image.asset("assets/locationPatrimoine.png")
-                : wonder.categorie == "Wonders hotels"
-                    ? Image.asset("assets/locationHotels.png")
-                    : Image.asset("assets/locationRestau.png"),
+                );
+              });
+        },
+        child: Stack(
+          children: [
+            Container(
+              child: wonder.categorie == 1
+                  ? Image.asset("assets/locationNature.png", fit: BoxFit.cover)
+                  : wonder.categorie == 2
+                      ? Image.asset("assets/locationPatrimoine.png",
+                          fit: BoxFit.cover)
+                      : wonder.categorie == 3
+                          ? Image.asset("assets/locationHotels.png")
+                          : wonder.categorie == 4
+                              ? Image.asset("assets/locationRestau.png")
+                              : Image.asset("assets/location.png"),
+            ),
+          ],
+        ),
       ),
     );
   }

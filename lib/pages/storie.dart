@@ -48,9 +48,9 @@ class _StoriesState extends State<Sttories> {
   Future<List<Map<String, dynamic>>> _fetchImages() async {
     try {
       final response = await Supabase.instance.client
-          .from('images_wonder') // Remplacez 'images_wonder' par le nom de votre table
+          .from('wonder_image') // Remplacez 'images_wonder' par le nom de votre table
           .select() // Sélectionner toutes les colonnes
-          .eq('wonder_id', widget.wond.idWonder); // Filtrer par wonder_id
+          .eq('wonder', widget.wond.idWonder); // Filtrer par wonder_id
 
       return response;
     } catch (e) {

@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 
 class FilterButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -53,31 +56,72 @@ class FilterButton extends StatelessWidget {
 }
 
 
+
+
+
 class WondersProvider with ChangeNotifier {
   Stream<List<Map<String, dynamic>>> _wondersStream =
+  Supabase.instance.client.from('wonder').stream(primaryKey: ['id']);
+  Stream<List<Map<String, dynamic>>> _wondersStreamVue =
   Supabase.instance.client.from('wonder').stream(primaryKey: ['id']);
   String _searchQuery = '';
 
   Stream<List<Map<String, dynamic>>> get wondersStream => _wondersStream;
+  Stream<List<Map<String, dynamic>>> get wondersStreamVue => _wondersStreamVue;
   String get searchQuery => _searchQuery;
 
-  void loadCategorie(int categorieName) {
-    _wondersStream = Supabase.instance.client
-        .from('wonder')
-        .stream(primaryKey: ['id'])
-        .eq('categorie', categorieName);
+  void loadCategorieVue(int id_categorie) {
+    if(id_categorie == 0){
+      _wondersStreamVue = Supabase.instance.client
+          .from('wonder')
+          .stream(primaryKey: ['id']);
+    }else{
+      _wondersStreamVue = Supabase.instance.client
+          .from('wonder')
+          .stream(primaryKey: ['id'])
+          .eq('categorie', id_categorie);
+    }
+
     notifyListeners();
   }
 
-  void applyFilters(String? selectedForfait, String? region, String? ville, String? categorie) {
+  void loadCategorie(int id_categorie) {
+    if(id_categorie != 0){
+      _wondersStream = Supabase.instance.client
+          .from('wonder')
+          .stream(primaryKey: ['id'])
+          .eq('categorie', id_categorie);
+    }else{
+      _wondersStream = Supabase.instance.client
+          .from('wonder')
+          .stream(primaryKey: ['id']);
+    }
+
+    notifyListeners();
+  }
+
+  void applyFilters(
+      String? selectedForfait,
+      String? region,
+      Position? currentPosition,
+      double? maxDistance,
+      int categorie
+      ) {
     var query = Supabase.instance.client.from('wonder').select();
 
+    print(selectedForfait);
+    print(region);
+    print(categorie);
+
+
     // Appliquer les filtres
-    if (categorie != null) {
+    if (categorie != 0) {
+      print(categorie);
       query = query.eq('categorie', categorie);
     }
 
     if (selectedForfait == 'Payants') {
+      print('On entre dans les payants');
       query = query.eq('free', false);
     } else if (selectedForfait == 'Non payants') {
       query = query.eq('free', true);
@@ -87,14 +131,21 @@ class WondersProvider with ChangeNotifier {
       query = query.eq('region', region);
     }
 
-    if (ville != null && ville.isNotEmpty && ville != 'Toutes les villes') {
-      query = query.eq('city', ville);
-    }
 
     // Appliquer la recherche si un terme de recherche est présent
     if (_searchQuery.isNotEmpty) {
-      query = query
-          .ilike('wonderNameLower', '${_searchQuery}%');
+      query = query.ilike('wonder_name', '%$searchQuery%');
+    }
+
+    // Filtrer par distance si la position actuelle est disponible
+    if (currentPosition != null && maxDistance != null) {
+      print('Je suis dans le filtre de rayon');
+      print(currentPosition);
+      print(maxDistance);
+      query = query.lt('latitude', currentPosition.latitude + maxDistance / 111.32)
+          .gt('latitude', currentPosition.latitude - maxDistance / 111.32)
+          .lt('longitude', currentPosition.longitude + maxDistance / (111.32 * cos(currentPosition.latitude * (3.141592653589793 / 180))))
+          .gt('longitude', currentPosition.longitude - maxDistance / (111.32 * cos(currentPosition.latitude * (3.141592653589793 / 180))));
     }
 
     // Mettre à jour le Stream avec la nouvelle requête
@@ -102,12 +153,11 @@ class WondersProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setSearchQuery(String query) {
+  void setSearchQuery(String query, int categorie) {
     _searchQuery = query;
-    applyFilters(null, null, null, null); // Vous pouvez passer des valeurs si nécessaire
+    applyFilters(null, null, null, null, categorie); // Vous pouvez passer des valeurs si nécessaire
   }
 }
-
 
 class UserProvider with ChangeNotifier {
   bool _isPremium = false;  // État par défaut
@@ -136,10 +186,20 @@ class UserProvider with ChangeNotifier {
 
   // Mettre à jour l'état premium et sauvegarder
   Future<void> setPremium(bool value) async {
-    _isPremium = value;
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('premium', value);
-    notifyListeners(); // Met à jour les widgets qui écoutent ce provider
+    try{
+      await Supabase.instance.client
+          .from('user')
+          .update({'is_premium': value})
+          .eq('uid', Supabase.instance.client.auth.currentUser!.id);
+
+      _isPremium = value;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('premium', value);
+      notifyListeners(); // Met à jour les widgets qui écoutent ce provider
+    } catch (e){
+      throw 'Erreur';
+    }
+
   }
 
   // Déconnexion : Réinitialiser les données utilisateur
@@ -154,6 +214,56 @@ class UserProvider with ChangeNotifier {
 
 
 class OfferProvider with ChangeNotifier {
+  Stream<List<Map<String, dynamic>>>? _offresStream;
+  int _currentPage = 0;
+  int _nombreOffres = 0;
+
+  Stream<List<Map<String, dynamic>>>? get offresStream => _offresStream;
+  int get currentPage => _currentPage;
+  int get nombreOffres => _nombreOffres;
+
+  OfferProvider() {
+    loadData();
+    _getNumberOfOffers();
+  }
+
+  Future<void> loadData() async {
+    _offresStream = Supabase.instance.client.from('offre').stream(primaryKey: ['id']);
+    notifyListeners();
+  }
+
+  Future<void> _getNumberOfOffers() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('offre')
+          .select('id');
+      _nombreOffres = response.length ?? 0;
+      notifyListeners();
+    } catch (e) {
+      _nombreOffres = 0;
+      notifyListeners();
+    }
+  }
+
+  void setCurrentPage(int page) {
+    _currentPage = page;
+    notifyListeners();
+  }
+
+  void incrementPage() {
+    if (_currentPage < _nombreOffres - 1) {
+      _currentPage++;
+    } else {
+      _currentPage = 0;
+    }
+    notifyListeners();
+  }
+}
+
+
+
+
+class DataProvider with ChangeNotifier {
   Stream<List<Map<String, dynamic>>>? _offresStream;
   int _currentPage = 0;
   int _nombreOffres = 0;

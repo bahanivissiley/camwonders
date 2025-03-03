@@ -8,6 +8,7 @@ import 'package:camwonders/pages/bottomNavigator/menu/vues.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 class Menu extends StatefulWidget{
 
@@ -20,6 +21,7 @@ class Menu extends StatefulWidget{
 class _MenuState extends State<Menu> {
   static const verte = Color(0xff226900);
   late PageController _pageController;
+  final GlobalKey _mapKey = GlobalKey();
 
   int _currentPageIndex = 0;
   bool isLoading = false;
@@ -119,7 +121,6 @@ class _MenuState extends State<Menu> {
                 },
                 transitionDuration: const Duration(milliseconds: 500)
                 ));
-
             },
             child: Container(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
@@ -136,7 +137,7 @@ class _MenuState extends State<Menu> {
               ),
             ),
           ) : Container(),
-          
+
           Consumer<NotificationProvider>(
             builder: (context, notificationProvider, _) {
               final int unreadCount = notificationProvider.notifications
@@ -148,12 +149,15 @@ class _MenuState extends State<Menu> {
                   IconButton(
                     icon: const Icon(LucideIcons.bellDot, size: 25,),
                     onPressed: () {
+
+                      NotificationService().showNotification(title: 'Bienvenue!', body: 'Merci de vous être inscrit à notre application!');
+                      /*
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const NotificationsPage(),
                         ),
-                      );
+                      );*/
                     },
                   ),
                   if (unreadCount > 0) // Affiche le badge uniquement si non lues

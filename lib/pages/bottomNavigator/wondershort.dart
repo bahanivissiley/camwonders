@@ -149,7 +149,16 @@ class _WondershortState extends State<Wondershort> {
                     controller: _controllers[index],
                   );
                 } else {
-                  return const Center(child: CircularProgressIndicator(color: Colors.green));
+                  return Center(child: AlertDialog(
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(), // Indicateur de chargement
+                        SizedBox(height: 16), // Espacement
+                        Text('Chargement des vidéos...'),
+                      ],
+                    ),
+                  ));
                 }
               },
             ),
@@ -628,11 +637,11 @@ class _CommentWidgetState extends State<CommentWidget> {
                               final Map<String, dynamic> document = snapshot.data![index];
                               final Comment com = Comment(
                                   idComment: document['id'],
-                                  idUser: document['user']?['id'],
+                                  idUser: document['user'],
                                   content: document['content'],
-                                  wondershort: document['wondershort'],
-                              userImage: document['user']?['profil_path'],
-                              userName: document['user']?['name']);
+                                  wondershort: document['wonder_short'],
+                              userImage: document['profil_path_user'],
+                                userName: document['user_name'],);
                               return CommentaireWidget(com: com);
                             },
                             separatorBuilder:

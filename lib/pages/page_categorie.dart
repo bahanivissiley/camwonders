@@ -15,12 +15,14 @@ import 'package:camwonders/shimmers_effect/menu_shimmer.dart';
 import 'package:camwonders/widgetGlobal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_keyboard_size/flutter_keyboard_size.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:liquid_pull_to_refresh/liquid_pull_to_refresh.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PageCategorie extends StatefulWidget {
   final String cat;
@@ -39,7 +41,19 @@ class _PageCategorieState extends State<PageCategorie> {
   void initState() {
     super.initState();
     _verifyConnection();
+      Future.microtask(() {
+        Provider.of<WondersProvider>(context, listen: false).loadCategorie(widget.id_categorie);
+      });
+
+    print(widget.cat);
+    print(widget.id_categorie);
+    print(widget.id_categorie);
+    print(widget.id_categorie);
+    print(widget.id_categorie);
+    print(widget.id_categorie);
+
   }
+
 
   void _verifyConnection() async {
     if (await Logique.checkInternetConnection()) {
@@ -60,7 +74,6 @@ class _PageCategorieState extends State<PageCategorie> {
   @override
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
-    final wonderProvider = Provider.of<WondersProvider>(context);
     final List<Widget> pages = [
       const Menu(),
       const reservations(),
@@ -69,7 +82,6 @@ class _PageCategorieState extends State<PageCategorie> {
       const Profil(),
       WondersBody(
         size: size,
-        listewonderscat: wonderProvider.wondersStream,
         cat: widget.cat, id_categorie: widget.id_categorie,
       ),
     ];
@@ -287,12 +299,10 @@ class WondersBody extends StatefulWidget {
   WondersBody({
     super.key,
     required this.size,
-    required this.listewonderscat,
     required this.cat, required this.id_categorie,
   });
 
   final Size size;
-  Stream<List<Map<String, dynamic>>> listewonderscat;
   final String cat;
   final int id_categorie;
 
@@ -313,6 +323,7 @@ class _WondersBodyState extends State<WondersBody> {
   }
 
   Future loadData() async {
+
     setState(() {
       isLoading = true;
     });
@@ -333,6 +344,7 @@ class _WondersBodyState extends State<WondersBody> {
   Widget build(BuildContext context) {
     final Size size = MediaQuery.of(context).size;
     final userProvider = Provider.of<UserProvider>(context);
+    final wonderProvider = Provider.of<WondersProvider>(context);
     return Scaffold(
       appBar: AppBar(
         scrolledUnderElevation: 0.0,
@@ -422,7 +434,7 @@ class _WondersBodyState extends State<WondersBody> {
                             textStyle: const TextStyle(
                                 fontSize: 14, fontWeight: FontWeight.bold)),
                         onChanged: (value) {
-                          Provider.of<WondersProvider>(context, listen: false).setSearchQuery(value.toLowerCase());
+                          Provider.of<WondersProvider>(context, listen: false).setSearchQuery(value.toLowerCase(), widget.id_categorie);
 
                         },
                       ),
@@ -433,7 +445,7 @@ class _WondersBodyState extends State<WondersBody> {
                           context: context,
                           builder: (BuildContext context) {
                             return FilterDialog(
-                              cat: widget.cat,
+                              cat: widget.cat, id_categorie: widget.id_categorie,
                             );
                           },
                         );
@@ -470,7 +482,7 @@ class _WondersBodyState extends State<WondersBody> {
             ),
           ),
           Expanded(
-              child: widget.listewonderscat.length != 0
+              child: widget.size != 0
                   ? LiquidPullToRefresh(
                       onRefresh: _handleRefresh,
                       color: _PageCategorieState.verte,
@@ -479,10 +491,10 @@ class _WondersBodyState extends State<WondersBody> {
                       showChildOpacityTransition: false,
                       springAnimationDurationInMilliseconds: 700,
                       child: StreamBuilder<List<Map<String, dynamic>>>(
-                        stream: widget.listewonderscat,
+                        stream: wonderProvider.wondersStream,
                         builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
                           if (snapshot.hasError) {
-                            return const Text('Something went wrong');
+                            return const Text("Quelques choses n'a pas bien marché");
                           }
 
                           if (snapshot.connectionState ==
@@ -540,7 +552,7 @@ class _WondersBodyState extends State<WondersBody> {
                                     is_premium: document['is_premium']);
                                 return GestureDetector(
                                   onTap: () {
-                                    (userProvider.isPremium || wond.free) ? Navigator.push(
+                                    (userProvider.isPremium || wond.is_premium) ? Navigator.push(
                                       context,
                                       PageRouteBuilder(
                                           pageBuilder: (context, animation,
@@ -666,11 +678,18 @@ class _WonderWidgetState extends State<WonderWidget>
       child: Container(
         //height: 350,
         width: widget.size.width,
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: const EdgeInsets.fromLTRB(15, 10, 15, 0),
         decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
           border: Border(
               bottom:
-                  BorderSide(color: Colors.grey.withValues(alpha:0.5))),
+                  BorderSide(color: Colors.grey.withValues(alpha:0.5)),
+              top:
+              BorderSide(color: Colors.grey.withValues(alpha:0.5)),
+              right:
+              BorderSide(color: Colors.grey.withValues(alpha:0.5)),
+              left:
+          BorderSide(color: Colors.grey.withValues(alpha:0.5))),
         ),
         child: Column(
           children: [
@@ -684,14 +703,14 @@ class _WonderWidgetState extends State<WonderWidget>
                     child: Container(
                       height: 250,
                       width: widget.size.width,
-                      margin: const EdgeInsets.fromLTRB(15, 15, 15, 0),
+
                       child: Stack(
                         children: [
                           SizedBox(
                             height: 250,
                             width: widget.size.width,
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
+                              borderRadius: BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
                               child: CachedNetworkImage(
                                 cacheManager: CustomCacheManager(),
                                 imageUrl: widget.wonderscat.imagePath,
@@ -707,11 +726,11 @@ class _WonderWidgetState extends State<WonderWidget>
 
 
 
-                          (userProvider.isPremium || widget.wonderscat.free)
+                          (userProvider.isPremium || widget.wonderscat.is_premium)
                               ? const SizedBox()  // Un widget vide au lieu d'un Center inutile
                               : Container(
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
+                              borderRadius: BorderRadius.only(topLeft: Radius.circular(10), topRight: Radius.circular(10)),
                               color: Colors.black.withValues(alpha:0.6),
                             ),
                             height: 250,
@@ -727,7 +746,7 @@ class _WonderWidgetState extends State<WonderWidget>
                   Container(
                       height: 50,
                       width: 50,
-                      margin: const EdgeInsets.fromLTRB(0, 30, 30, 0),
+                      margin: const EdgeInsets.fromLTRB(0, 20, 20, 0),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(50),
                       ),
@@ -882,7 +901,6 @@ class _WonderWidgetState extends State<WonderWidget>
                           ),
                           const Icon(LucideIcons.dot),
                           Text("Région du : ${widget.wonderscat.region}"),
-                          const Icon(LucideIcons.dot),
                         ],
                       ),
                       Row(
@@ -975,12 +993,6 @@ class _WonderWidgetState extends State<WonderWidget>
                           )
                         ],
                       ),
-                      Text(
-                        "Categorie : ${widget.wonderscat.categorie}",
-                        style: const TextStyle(
-                            color: Color(0xff226900),
-                            fontWeight: FontWeight.bold),
-                      )
                     ],
                   ),
                 ],
@@ -994,9 +1006,11 @@ class _WonderWidgetState extends State<WonderWidget>
 }
 
 
+
 class FilterDialog extends StatefulWidget {
-  FilterDialog({super.key, required this.cat});
+  FilterDialog({super.key, required this.cat, required this.id_categorie});
   final String cat;
+  final int id_categorie;
 
   @override
   FilterDialogState createState() => FilterDialogState();
@@ -1006,6 +1020,8 @@ class FilterDialogState extends State<FilterDialog> {
   String _selectedRegion = 'Toutes les régions';
   String _selectedCity = 'Toutes les villes';
   String _selectedForfait = 'Tout';
+  double _selectedDistance = 10.0; // Distance par défaut en kilomètres
+  Position? _currentPosition;
 
   final List<String> _forfaits = [
     'Tout',
@@ -1042,7 +1058,34 @@ class FilterDialogState extends State<FilterDialog> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return;
+      }
+    }
+
+    Position position = await Geolocator.getCurrentPosition();
+    setState(() {
+      _currentPosition = position;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final wondersProvider = Provider.of<WondersProvider>(context);
     return AlertDialog(
       title: const Text('Définissez vos options de filtrage'),
       content: SingleChildScrollView(
@@ -1111,6 +1154,32 @@ class FilterDialogState extends State<FilterDialog> {
               ),
             ),
             const SizedBox(height: 16.0),
+            Text('Distance maximale (km) : $_selectedDistance'),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: Colors.green,
+                inactiveTrackColor: Colors.grey,
+                thumbColor: Colors.green,
+                overlayColor: Colors.green.withOpacity(0.2),
+                valueIndicatorColor: Colors.green,
+                trackHeight: 4.0,
+                thumbShape: RoundSliderThumbShape(enabledThumbRadius: 8.0),
+                overlayShape: RoundSliderOverlayShape(overlayRadius: 16.0),
+              ),
+              child: Slider(
+                value: _selectedDistance,
+                min: 1,
+                max: 1000,
+                divisions: 999,
+                label: _selectedDistance.round().toString(),
+                onChanged: (double value) {
+                  setState(() {
+                    _selectedDistance = value;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(height: 16.0),
           ],
         ),
       ),
@@ -1123,10 +1192,13 @@ class FilterDialogState extends State<FilterDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            final wondersProvider = Provider.of<WondersProvider>(context, listen: false);
-            wondersProvider.applyFilters(_selectedForfait, _selectedRegion, _selectedCity, widget.cat);
-            setState(() {
-            });
+            wondersProvider.applyFilters(
+              _selectedForfait,
+              _selectedRegion,
+              _currentPosition,
+              _selectedDistance,
+              widget.id_categorie,
+            );
             Navigator.of(context).pop();
           },
           child: const Text('Appliquer'),

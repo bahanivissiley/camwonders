@@ -84,6 +84,9 @@ dependencies:
   scrollable_positioned_list: ^0.3.8
   flutter_riverpod: ^2.6.1
   supabase_flutter: ^2.8.3
+  flutter_local_notifications: ^18.0.1
+  mesomb: ^1.1.1
+  showcaseview: ^4.0.1
 
 dev_dependencies:
   flutter_test:
@@ -165,6 +168,7 @@ flutter:
     - assets/locationNature.png
     - assets/locationPatrimoine.png
     - assets/locationRestau.png
+    - assets/location.png
     - assets/holder.jpg
     - assets/reservation.png
     - assets/guide.png

@@ -1,3 +1,4 @@
+import 'package:camwonders/class/Notification.dart';
 import 'package:camwonders/class/Utilisateur.dart';
 import 'package:camwonders/class/Wonder.dart';
 import 'package:camwonders/class/WonderShort.dart';
@@ -31,6 +32,8 @@ class Camwonder {
       String? nom, String? identifiant, String uid, String? profilPath, BuildContext context) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     if (await checkIfUserExists(uid, context)) {
+      final notif = Provider.of<NotificationProvider>(context);
+      notif.addNotification('Bienvenu(e) ${nom}', 'Merci de vous être inscris sur camwonders, découvrez toutes les merveilles du cameroun avec nous');
       return;
     } else {
       if (profilPath != null) {
@@ -52,14 +55,14 @@ class Camwonder {
         await prefs.setString('identifiant', identifiant!);
         await prefs.setBool('premium', false);
         await prefs.setString('profilPath',
-            "https://www.camwonders.com/static/img/Logo.jpg");
+            "https://hrqjdfpyaucbqitmxlaq.supabase.co/storage/v1/object/public/profilsUser/public/inconnu.png");
         await _supabase.from('user').insert({
           'uid': uid,
           'name': nom,
           'identifiant': identifiant,
           'is_premium': false,
           'profil_path':
-          "https://www.camwonders.com/static/img/Logo.jpg",
+          "https://hrqjdfpyaucbqitmxlaq.supabase.co/storage/v1/object/public/profilsUser/public/inconnu.png",
         });
       }
     }
@@ -114,11 +117,11 @@ class Camwonder {
 
   Future<Utilisateur> getUserInfo() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? uid = _supabase.auth.currentUser!.id;
     final String? nom = prefs.getString('nom');
     final String? identifiant = prefs.getString('identifiant');
     final bool? premium = prefs.getBool('premium');
     final String? profilPath = prefs.getString('profilPath');
+
 
     if (nom == null || identifiant == null) {
       return Utilisateur(
@@ -128,7 +131,7 @@ class Camwonder {
           nom: "Utilisateur inconnu",
           premium: false,
           profilPath:
-          "https://www.camwonders.com/static/img/Logo.jpg");
+          "https://hrqjdfpyaucbqitmxlaq.supabase.co/storage/v1/object/public/profilsUser/public/inconnu.png");
     }
 
     if (profilPath == null){
@@ -138,7 +141,7 @@ class Camwonder {
           identifiant: identifiant,
           nom: nom,
           premium: premium!,
-          profilPath: "assets/profil.png");
+          profilPath: "https://hrqjdfpyaucbqitmxlaq.supabase.co/storage/v1/object/public/profilsUser/public/inconnu.png");
     }
 
     return Utilisateur(
@@ -178,31 +181,6 @@ class Camwonder {
   }
 
   Future<Wonder?> getWonderById(int wonderId) async {
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-    print(wonderId);
-
     try {
       final response = await _supabase
           .from('wonder')
